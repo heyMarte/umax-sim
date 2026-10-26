@@ -1,0 +1,27 @@
+# Runtime and private configuration
+/server/config/config.php
+/server/config/keyring.php
+/server/config/.online-update*
+/server/var/
+/server/backups/
+/server/tests/test-config.php
+**/.env
+**/.env.*
+!**/.env.example
+*.log
+*.sql.gz
+*.sqlite*
+*.db
+# Builds and private signing
+/android/.gradle/
+/android/.kotlin/
+**/build/
+**/local.properties
+*.keystore
+*.jks
+*.apk
+/dist/
+node_modules/
+__pycache__/
+.DS_Store
+.superpowers/

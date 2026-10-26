@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><title>Custom select contracts</title>
+<link rel="stylesheet" href="../public/static/custom-select.css">
+<style>body{font:14px system-ui;padding:24px}#fixtures{max-width:500px}label{display:block;margin:12px 0}dialog{width:360px} .clip{overflow:hidden;height:70px}</style>
+<pre id="results">Running…</pre><div id="fixtures"></div>
+<script type="module">
+const results=[];
+const assert=(ok,message)=>{if(!ok)throw Error(message)};
+const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+try {
+const {installCustomSelects}=await import('../public/static/custom-select.js');
+const fixtures=document.querySelector('#fixtures');
+fixtures.innerHTML='<form><label for="country">国家</label><select required name="country" id="country"><option value="">请选择</option><option value="ph">菲律宾</option><option value="id" disabled>不可用</option><option value="my">马来西亚</option></select></form>';
+installCustomSelects();
+const select=fixtures.querySelector('select');
+let changes=0;select.addEventListener('change',()=>changes++);
+const trigger=fixtures.querySelector('[role=combobox]');
+assert(trigger,'select has a custom combobox');
+assert(trigger.getAttribute('aria-labelledby'),'label association is preserved');
+trigger.click();
+trigger.dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}));
+trigger.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+assert(select.value==='my','keyboard selects last enabled option');
+assert(changes===1,'selection dispatches one change');
+assert(new FormData(select.form).get('country')==='my','real form value is preserved');
+select.value='ph';assert(trigger.textContent.includes('菲律宾'),'programmatic value synchronizes immediately');
+select.disabled=true;await tick();assert(trigger.disabled,'disabled native control disables trigger');
+select.disabled=false;select.value='';await tick();select.form.reportValidity();
+assert(document.activeElement===trigger,'required validation focuses custom control');
+select.form.reset();await tick();assert(select.value===''&&trigger.textContent.includes('请选择'),'form reset synchronizes');
+results.push('PASS keyboard, disabled, FormData, validation, reset, programmatic value');
+const dynamic=document.createElement('select');dynamic.innerHTML=Array.from({length:12},(_,i)=>`<option value="${i}">商店 ${i}</option>`).join('');fixtures.append(dynamic);await tick();
+const dynamicTrigger=dynamic.parentElement.querySelector('[role=combobox]');
+assert(dynamicTrigger,'dynamically inserted select is enhanced');dynamicTrigger.click();
+const search=dynamic.parentElement.querySelector('input[type=search]');assert(search,'long list provides search');
+search.value='商店 11';search.dispatchEvent(new Event('input',{bubbles:true}));
+const visible=[...dynamic.parentElement.querySelectorAll('[role=option]')].filter(x=>!x.hidden);
+assert(visible.length===1&&visible[0].textContent.includes('商店 11'),'search filters long options');visible[0].click();assert(dynamic.value==='11','filtered option commits correct underlying index');
+dynamic.innerHTML='<option value="new">新选项</option>';await tick();assert(dynamicTrigger.textContent.includes('新选项'),'option replacement refreshes trigger');
+results.push('PASS dynamic insertion, search, option replacement');
+const dialog=document.createElement('dialog');dialog.innerHTML='<div class="clip"><label>弹窗选项<select><option>A</option><option>B</option></select></label></div>';fixtures.append(dialog);await tick();dialog.showModal();
+const dialogTrigger=dialog.querySelector('[role=combobox]');dialogTrigger.click();
+const list=dialog.querySelector('[role=listbox]');assert(list&&dialog.contains(list),'list stays inside modal dialog');
+assert(dialogTrigger.getAttribute('aria-expanded')==='true','modal menu opens');
+dialogTrigger.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));assert(dialog.open&&dialogTrigger.getAttribute('aria-expanded')==='false','Escape closes list without closing dialog');dialog.close();
+results.push('PASS modal list ownership and Escape');
+const disabledField=document.createElement('fieldset');disabledField.innerHTML='<legend>Disabled group</legend><select><option>A</option><option>B</option></select>';fixtures.append(disabledField);await tick();
+const fieldSelect=disabledField.querySelector('select');const fieldTrigger=disabledField.querySelector('[role=combobox]');disabledField.disabled=true;await tick();assert(fieldTrigger.disabled,'fieldset disability propagates');disabledField.disabled=false;await tick();
+fieldSelect.selectedIndex=1;assert(fieldTrigger.textContent.includes('B'),'selectedIndex setter refreshes');
+fieldSelect.hidden=true;await tick();assert(getComputedStyle(fieldTrigger.closest('.umax-select')).display==='none','hidden native select hides custom control');fieldSelect.hidden=false;await tick();
+results.push('PASS fieldset disabled, selectedIndex and hidden control');
+const fallback=document.createElement('dialog');fallback.innerHTML='<div class="clip"><select><option>A</option><option>B</option></select></div>';fixtures.append(fallback);await tick();fallback.showModal();const fallbackTrigger=fallback.querySelector('[role=combobox]');fallback.querySelector('.umax-select-panel').removeAttribute('popover');fallbackTrigger.click();const fallbackPanel=fallback.querySelector('.umax-select-panel');assert(fallbackPanel.parentElement===fallback,'fallback menu escapes clipping in dialog body');fallbackTrigger.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert(fallbackPanel.closest('.umax-select'),'fallback menu returns to wrapper after closing');fallback.close();results.push('PASS modal portal fallback');
+const invalidForm=document.createElement('form');invalidForm.innerHTML='<select required><option value="">First</option><option>A</option></select><select required><option value="">Second</option><option>B</option></select>';fixtures.append(invalidForm);await tick();invalidForm.reportValidity();assert(document.activeElement===invalidForm.querySelector('[role=combobox]'),'invalid form focuses first required select');results.push('PASS first invalid field focus');
+window.customSelectTests={passed:true,results};
+} catch(error) {results.push('FAIL '+error.message);window.customSelectTests={passed:false,results};}
+document.querySelector('#results').textContent=results.join('\n');
+</script>

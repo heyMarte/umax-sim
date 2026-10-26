@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <instrumentation android:name="com.simmanager.collector.RegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.UpdateRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.LegacyAndroidRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.AutoUpdateRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.TabsRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.ScanPairingRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.PhoneHintRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.FeedbackRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.SimLifecycleRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.Android6CompatibilityRunner" android:targetPackage="com.simmanager.collector"/>
+ <instrumentation android:name="com.simmanager.collector.StartPermissionsRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+<instrumentation android:name="com.simmanager.collector.LegacyUpdateRegressionRunner" android:targetPackage="com.simmanager.collector"/>
+</manifest>

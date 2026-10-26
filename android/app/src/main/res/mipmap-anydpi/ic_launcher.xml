@@ -1,0 +1,4 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+ <item><shape android:shape="rectangle"><size android:width="48dp" android:height="48dp"/><solid android:color="@color/sim_brand"/></shape></item>
+ <item android:left="8dp" android:top="8dp" android:right="8dp" android:bottom="8dp"><bitmap android:src="@drawable/umax_logo" android:gravity="fill" android:filter="true"/></item>
+</layer-list>

@@ -1,0 +1,29 @@
+/* Loaded after the app stylesheet. Native controls remain usable without JS. */
+.umax-select{position:relative;display:inline-block;vertical-align:middle;min-width:0;max-width:100%;font-size:13px;color:#29485f}
+.umax-select[hidden]{display:none!important}
+label>.umax-select,.number-existing-pick .umax-select{display:block;width:100%}
+.umax-select .umax-select-native,.umax-select-sr{position:absolute!important;inset:auto!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;border:0!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;overflow:hidden!important;white-space:nowrap!important;pointer-events:none!important;min-width:0!important;min-height:0!important}
+.umax-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;min-width:110px;max-width:100%;min-height:39px;padding:9px 12px;border:1px solid #dce5eb;border-radius:8px;background:#fff;color:#29485f;font:inherit;font-weight:400;line-height:1.4;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s}
+.umax-select-trigger:hover{border-color:#a9c9c8;background:#fbfdfd}
+.umax-select-trigger:focus-visible,.umax-select.is-open>.umax-select-trigger{outline:0;border-color:#258b85;box-shadow:0 0 0 3px #16837c1a}
+.umax-select-caption{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.umax-select-arrow{width:7px;height:7px;border-right:1.7px solid #7d929c;border-bottom:1.7px solid #7d929c;transform:translateY(-2px) rotate(45deg);flex:0 0 7px;transition:transform .15s}
+.umax-select.is-open .umax-select-arrow{transform:translateY(2px) rotate(225deg)}
+.umax-select-trigger:disabled{opacity:1;background:#f3f6f8;border-color:#e3eaee;color:#91a0ac;cursor:default}
+.umax-select-trigger[aria-invalid=true]{border-color:#bd625f;box-shadow:0 0 0 3px #bd625f14}
+.umax-select-panel{position:fixed;inset:auto;margin:0;padding:5px;border:1px solid #dce8e8;border-radius:11px;background:#fff;color:#29485f;box-shadow:0 12px 35px #173f4a24,0 2px 6px #173f4a0c;z-index:10000;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;min-width:0;font:13px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;text-align:left}
+.umax-select-panel[hidden],.umax-select-panel [hidden]{display:none!important}
+.umax-select-search{display:block;flex:0 0 auto;width:calc(100% - 8px);min-width:0;min-height:36px;margin:4px 4px 7px;padding:8px 10px;border:1px solid #dce8e8;border-radius:7px;background:#f7fafa;color:#29485f;font:inherit;box-sizing:border-box}
+.umax-select-search:focus{outline:0;border-color:#50a49e;box-shadow:0 0 0 2px #16837c12}
+.umax-select-list{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c7d9dc transparent;min-height:0}
+.umax-select-option{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 10px;border-radius:6px;cursor:pointer;line-height:1.5;overflow-wrap:anywhere;user-select:none}
+.umax-select-option>span:first-child{min-width:0}
+.umax-select-option.is-active{background:#f0f7f6;color:#176b65}
+.umax-select-option[aria-selected=true]{background:#e9f5f2;color:#13756b;font-weight:550}
+.umax-select-check{font-size:14px;flex:0 0 14px;visibility:hidden;color:#19867b}
+.umax-select-option[aria-selected=true] .umax-select-check{visibility:visible}
+.umax-select-option[aria-disabled=true]{opacity:.45;cursor:default}
+.umax-select-group{padding:10px 10px 4px;font-size:11px;font-weight:600;color:#8a9ca6}
+.umax-select-empty{padding:20px 12px;text-align:center;color:#8a9ca6;font-size:12px}
+@media(max-width:600px){.umax-select-trigger{min-height:42px}.umax-select-option{padding:11px 10px}.umax-select-panel{max-width:calc(100vw - 24px)}}
+@media(prefers-reduced-motion:reduce){.umax-select-trigger,.umax-select-arrow{transition:none}}

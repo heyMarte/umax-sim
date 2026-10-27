@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 — 2026-10-26
+## 0.6.0 — 2026-10-27
 
 First prepared open-source version, based on backend0.5.11 and Android0.5.13.
 

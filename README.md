@@ -1,5 +1,7 @@
 # Umax SIM
 
+[GitHub](https://github.com/marte95/umax-sim) · [Gitee](https://gitee.com/umaxai/umax-sim) · [MIT License](LICENSE)
+
 自部署的手机卡管理工具，使用 Android 手机采集新收到的验证码短信，通过 Web 后台统一管理号码、设备、余额和人员权限。
 
 > 0.6.0 开源版：PHP 后台＋Android App，MIT 许可证。各部署者连接自己的服务器和手机。

@@ -1,10 +1,10 @@
 # Umax SIM
 
-[GitHub](https://github.com/marte95/umax-sim) · [Gitee](https://gitee.com/umaxai/umax-sim) · [MIT License](LICENSE)
+[GitHub](https://github.com/heyMarte/umax-sim) · [Gitee](https://gitee.com/umaxai/umax-sim) · [MIT License](LICENSE)
 
 自部署的手机卡管理工具，使用 Android 手机采集新收到的验证码短信，通过 Web 后台统一管理号码、设备、余额和人员权限。
 
-> 0.6.0 开源版：PHP 后台＋Android App，MIT 许可证。各部署者连接自己的服务器和手机。
+> 0.6.1 开源版：PHP 后台＋Android App，MIT 许可证。各部署者连接自己的服务器和手机。
 
 适合电商运营团队、跨境团队及需要集中管理自有手机卡的个人。手机号是主要管理对象，平台和店铺用于区分用途，录入号码不要求先建店铺。
 
@@ -26,6 +26,8 @@ Android手机插卡并接收短信 → App通过HTTPS上传到自己的服务器
 每个部署者使用自己的服务器、数据库和手机。项目不提供公共接码池、公共短信转发服务或内置第三方收码账户。
 
 ## 部署
+
+已有部署：[0.6.1后台更新说明](docs/UPDATE-0.6.1.md)，App无需更新。
 
 - 后台：PHP8.2、MySQL8.0或MariaDB10.6+、Nginx、HTTPS。
 - App：最低Android6.0/API23。不同厂商的后台保活、权限和安装器行为需分别验证。

@@ -54,9 +54,11 @@ function migrate(): void {
     }
     query('INSERT INTO schema_versions(version,applied_at) VALUES(?,?) ON DUPLICATE KEY UPDATE version=VALUES(version)',['0.4.2',microtime(true)]);
     if(!in_array('platform',array_column(query('SHOW COLUMNS FROM shops'),'Field'),true))db()->exec("ALTER TABLE shops ADD COLUMN platform VARCHAR(16) NOT NULL DEFAULT ''");
-    // Install the replacement key before dropping the old name-only constraint.
-    if(!query("SHOW INDEX FROM shops WHERE Key_name='shop_platform_name'"))db()->exec('ALTER TABLE shops ADD UNIQUE KEY shop_platform_name(platform,name)');
-    foreach(query('SHOW INDEX FROM shops') as $idx)if($idx['Key_name']!=='PRIMARY'&&$idx['Key_name']!=='shop_platform_name'&&(int)$idx['Non_unique']===0&&$idx['Column_name']==='name'){$key=$idx['Key_name'];if(preg_match('/^[A-Za-z0-9_]+$/D',$key))db()->exec("ALTER TABLE shops DROP INDEX `$key`");}
+    // Names are display labels. Identity, permissions and links use the shop ID.
+    foreach(query('SHOW INDEX FROM shops') as $idx)if($idx['Key_name']!=='PRIMARY'&&(int)$idx['Non_unique']===0&&$idx['Column_name']==='name'){
+      $key=$idx['Key_name'];if(preg_match('/^[A-Za-z0-9_]+$/D',$key))db()->exec("ALTER TABLE shops DROP INDEX `$key`");
+    }
+    if(!query("SHOW INDEX FROM shops WHERE Key_name='shop_platform_name'"))db()->exec('ALTER TABLE shops ADD INDEX shop_platform_name(platform,name)');
     db()->exec('CREATE TABLE IF NOT EXISTS sim_shops(sim_id BIGINT UNSIGNED NOT NULL,shop_id BIGINT UNSIGNED NOT NULL,PRIMARY KEY(sim_id,shop_id),INDEX(shop_id,sim_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
     if(!query('SELECT version FROM schema_versions WHERE version=?',['sim-shops-0.5.0'])){
       query('INSERT IGNORE INTO sim_shops(sim_id,shop_id) SELECT id,shop_id FROM sims WHERE shop_id IS NOT NULL');

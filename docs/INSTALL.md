@@ -1,6 +1,6 @@
 # 安装说明
 
-本文对应0.6.0，源码布局为server/与android/。先下载发布包，或从维护者仓库取得指定版本；GitHub主仓库计划地址为https://github.com/marte95/umax-sim，发布状态以仓库页面为准。
+本文对应0.6.0，源码布局为server/与android/。先下载发布包，或从维护者仓库取得指定版本；GitHub主仓库计划地址为https://github.com/heyMarte/umax-sim，发布状态以仓库页面为准。
 
 以下使用`sim.example.com`与`/www/wwwroot/umax-sim/server`作为示例，替换为自己的域名及实际部署目录。
 

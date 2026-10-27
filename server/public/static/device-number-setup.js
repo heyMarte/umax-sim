@@ -1,4 +1,4 @@
-import {phoneHintSuggestion,subscriptions,normalizePhone} from './ui-data.js?v=0511';
+import {phoneHintSuggestion,subscriptions,normalizePhone} from './ui-data.js?v=061';
 
 /** Binding is always a user confirmation. SMS receipt tests are separate and optional. */
 export function createDeviceNumberSetup(ui){

@@ -12,4 +12,7 @@ rejects(fn()=>intField(['subscription_id'=>'7'],'subscription_id'));
 check(intField(['subscription_id'=>null],'subscription_id',true)===null,'未知订阅');
 check(stringField(['shop'=>'测试店铺'],'shop',4)==='测试店铺','中文长度');
 rejects(fn()=>stringField(['shop'=>'测试店铺'],'shop',3));
+check(str_contains(duplicateWriteMessage('/api/shops/42'),'店铺'),'店铺冲突给店铺提示');
+check(!str_contains(duplicateWriteMessage('/api/shops/42'),'号码'),'店铺冲突不混入号码');
+check(str_contains(duplicateWriteMessage('/api/sims'),'号码'),'其他对象保留原提示');
 echo "PASS: PHP field validation\n";

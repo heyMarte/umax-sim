@@ -5,7 +5,7 @@
 维护者先创建两个空仓库，不勾选自动生成README/许可证，然后在已审查的本地仓库配置：
 
 ```bash
-git remote add origin git@github.com:marte95/umax-sim.git
+git remote add origin git@github.com:heyMarte/umax-sim.git
 git remote add gitee git@gitee.com:umaxai/umax-sim.git
 git push -u origin main
 git push gitee main

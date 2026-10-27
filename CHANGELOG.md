@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 — 2026-10-27
+
+Backend-only fix; Android remains0.6.0. Shop names may repeat, including names in trash; IDs, existing links, access scopes and old message snapshots stay distinct. Duplicate shop choices show a stable ID and available phone. Shop conflict messages are specific, and browser module caches are refreshed. See docs/UPDATE-0.6.1.md.
+
 ## 0.6.0 — 2026-10-27
 
 First prepared open-source version, based on backend0.5.11 and Android0.5.13.

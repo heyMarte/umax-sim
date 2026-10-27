@@ -39,7 +39,7 @@ try {
     $duplicate=($e->errorInfo[1]??null)===1062;
     http_response_code($duplicate?409:503);
     // 不输出数据库配置、SQL、正文或令牌。
-    echo json_encode(['detail'=>$duplicate?'号码、账户、密钥或绑定已存在；已删除项目请从回收站恢复后再编辑':'数据库不可用，请检查配置、导入表结构及数据库服务'],JSON_UNESCAPED_UNICODE);
+    echo json_encode(['detail'=>$duplicate?duplicateWriteMessage($path):'数据库不可用，请检查配置、导入表结构及数据库服务'],JSON_UNESCAPED_UNICODE);
 } catch(Throwable $e) {
     http_response_code(500);echo json_encode(['detail'=>'服务器处理失败，请检查 PHP 环境和配置'],JSON_UNESCAPED_UNICODE);
 }

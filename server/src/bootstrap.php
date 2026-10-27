@@ -6,6 +6,11 @@ final class ApiError extends RuntimeException {
     public function __construct(public int $status, string $message) { parent::__construct($message); }
 }
 function fail(int $status, string $message): never { throw new ApiError($status, $message); }
+function duplicateWriteMessage(string $path):string {
+    return preg_match('#^/api/shops(?:/\d+)?$#D',$path)
+        ? '店铺保存发生冲突，请刷新后重试'
+        : '号码、账户、密钥或绑定已存在；已删除项目请从回收站恢复后再编辑';
+}
 function settings(): array {
     static $config;
     if ($config !== null) return $config;

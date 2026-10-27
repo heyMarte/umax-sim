@@ -16,7 +16,7 @@ def api(path,method='GET',body=None,expected=200,device=None):
  except urllib.error.HTTPError as e:code=e.code;value=json.load(e)
  assert code==expected,(path,code,value)
  return value
-assert api('/health')['version']=='0.6.0'
+assert api('/health')['version']=='0.6.1'
 login=api('/api/login','POST',{'username':os.environ['SIM_SMOKE_USER'],'password':os.environ['SIM_SMOKE_PASSWORD']});csrf=login['csrf']
 me=api('/api/me');assert any(x['value']=='amazon' for x in me['platform_catalog']),'Set test platform_catalog amazon before running'
 wx=api('/api/wechat/status');assert not wx['config']['enabled'] and wx['config']['template_id']=='' and wx['config']['origin']=='','fresh optional channel must be blank and disabled'

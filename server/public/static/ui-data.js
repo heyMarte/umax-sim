@@ -105,6 +105,14 @@ export function configurePlatforms(options){
   seen.add(p.value);return {value:p.value,label:p.label,glyph:Array.from(p.label)[0]};
  });platformOptions.splice(0,platformOptions.length,...next);
 }
+// Names are optional display labels; selectors must keep distinct IDs recognizable.
+export function shopChoiceLabel(shop,choices=[]){
+ const name=String(shop?.name??'');
+ const collision=choices.some(s=>String(s.id)!==String(shop.id)&&s.name===shop.name&&String(s.platform||'')===String(shop.platform||''));
+ if(!collision)return name;
+ const phones=[...new Set((shop.linked_sims||[]).map(s=>s.phone).filter(Boolean))].join(' / ');
+ return `${name} · ${phones?phones+' · ':''}#${shop.id}`;
+}
 export function normalizePlatforms(value){if(typeof value==='string'){try{value=JSON.parse(value)}catch{return []}}return platformOptions.map(p=>p.value).filter(p=>Array.isArray(value)&&value.includes(p))}
 export function messagePlatform(message){const key=message.inferred_platform;return platformOptions.find(p=>p.value===key)||(typeof key==='string'&&/^[a-z][a-z0-9_-]{0,15}$/.test(key)?{value:key,label:message.platform_label||key,glyph:Array.from(message.platform_label||key)[0]}:null)}
 

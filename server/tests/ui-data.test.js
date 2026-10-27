@@ -36,3 +36,13 @@ test('communication is not proof the collector or actual SMS chain is healthy',a
  rows=deviceReadiness({id:1,online:false,telemetry:{fresh:false,data:{collector_running:true}},subscriptions:[]});
  assert.equal(rows[0].value,'状态待确认');
 });
+
+test('same-name shop choices remain distinguishable without forbidding names',async()=>{
+ const {shopChoiceLabel}=await import('../public/static/ui-data.js');
+ const shops=[{id:11,name:'Same',platform:'tiktok',linked_sims:[{phone:'+639171234567'}]},{id:12,name:'Same',platform:'tiktok'},{id:13,name:'Other',platform:'tiktok'}];
+ assert.equal(shopChoiceLabel(shops[2],shops),'Other');
+ assert.match(shopChoiceLabel(shops[0],shops),/Same.*\+639171234567.*#11/);
+ assert.match(shopChoiceLabel(shops[1],shops),/Same.*#12/);
+ assert.notEqual(shopChoiceLabel(shops[0],shops),shopChoiceLabel(shops[1],shops));
+ assert.equal(shopChoiceLabel({id:11,name:'<b>Label</b>',platform:'tiktok'},[]),'<b>Label</b>');
+});

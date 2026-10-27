@@ -6,7 +6,7 @@
 
 ```bash
 git remote add origin git@github.com:marte95/umax-sim.git
-git remote add gitee git@gitee.com:你的账号/umax-sim.git
+git remote add gitee git@gitee.com:umaxai/umax-sim.git
 git push -u origin main
 git push gitee main
 git push origin v0.6.0

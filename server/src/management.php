@@ -20,7 +20,7 @@ function guardAdminChange(array $target,string $role,int $active): void {
     }
 }
 function refreshBalance(int $sim): void {
-    $latest=query("SELECT amount,at FROM records WHERE sim_id=? AND kind='balances' AND deleted_at IS NULL AND shop_id <=> (SELECT shop_id FROM sims WHERE id=?) ORDER BY at DESC,id DESC LIMIT 1",[$sim,$sim]);
+    $latest=query("SELECT amount,at FROM records WHERE sim_id=? AND kind='balances' AND deleted_at IS NULL AND shop_id <=> (SELECT shop_id FROM sims WHERE id=?) AND currency_snapshot=(SELECT currency FROM sims WHERE id=?) ORDER BY at DESC,id DESC LIMIT 1",[$sim,$sim,$sim]);
     query('UPDATE sims SET balance=?,checked_at=? WHERE id=?',[$latest[0]['amount']??null,$latest[0]['at']??null,$sim]);
 }
 function changeKey(array $u,int $id,array $b): array {
@@ -57,7 +57,7 @@ function managementRoute(string $method,string $path,array $b,array $u): ?array 
     }
     if($method==='POST'&&preg_match('#^/api/admin/restore/(device|sim|user|record|message|shop)/(\d+)$#D',$path,$m)){
         manageAdmin($u);$kind=$m[1];$id=(int)$m[2];$r=asset($kind,$id,true);if($r['deleted_at']===null)fail(409,'该对象已经恢复');
-        if($kind==='record'&&!query('SELECT id FROM sims WHERE id=? AND deleted_at IS NULL',[$r['sim_id']]))fail(422,'请先恢复该记录对应的号码');
+        if($u['role']!=='admin'&&$kind==='record'&&!query('SELECT id FROM sims WHERE id=? AND deleted_at IS NULL',[$r['sim_id']]))fail(422,'请先恢复该记录对应的号码');
         $table=assetTable($kind);db()->beginTransaction();try{
             if($kind==='user'){$lockedUser=query('SELECT * FROM users WHERE id=? FOR UPDATE',[$id]);if(!$lockedUser||!canManageAccount($u,$lockedUser[0]))fail(404,'账户不在可管理范围');}
             if($kind==='sim'){query('SELECT id FROM sims WHERE id=? FOR UPDATE',[$id]);requireWholeSim($u,$id,true);}
@@ -99,8 +99,8 @@ function managementRoute(string $method,string $path,array $b,array $u): ?array 
              $GLOBALS['_audit_before']['sim:'.$id]=array_intersect_key($locked[0],array_flip(auditFields('sim')));
              $currentDevices=array_map('intval',array_column(query('SELECT device_id FROM bindings WHERE sim_id=? FOR UPDATE',[$id]),'device_id'));if($currentDevices!==$boundDevices)fail(409,'卡槽绑定已变化，请刷新后重试');
              $liveShop=query('SELECT * FROM shops WHERE id=? AND deleted_at IS NULL FOR UPDATE',[$shop['id']]);if(!$liveShop)fail(404,'店铺不可用，请刷新后重试');$shop=$liveShop[0];if(count(simShopIds($id))>1&&(int)$shop['id']!==(int)$locked[0]['shop_id'])fail(422,'共享号码请使用店铺关联接口调整店铺');
-             if($locked[0]['currency']!==$currency&&query('SELECT id FROM records WHERE sim_id=? LIMIT 1',[$id]))fail(422,'已有流水的号码不能更换币种，请新增号码保留原账目');
-             query('UPDATE sims SET phone=?,carrier=?,country=?,currency=?,location=?,shop=?,shop_id=? WHERE id=?',[$phone,$carrier,$country,$currency,stringField($b,'location',50),$shop['name'],$shop['id'],$id]);if((int)$locked[0]['shop_id']!==(int)$shop['id']){query('DELETE FROM sim_shops WHERE sim_id=?',[$id]);query('INSERT INTO sim_shops(sim_id,shop_id) VALUES(?,?)',[$id,$shop['id']]);refreshBalance($id);}syncSimDeviceScopes($id);db()->commit();
+             if($u['role']!=='admin'&&$locked[0]['currency']!==$currency&&query('SELECT id FROM records WHERE sim_id=? LIMIT 1',[$id]))fail(422,'已有流水的号码不能更换币种，请新增号码保留原账目');
+             query('UPDATE sims SET phone=?,carrier=?,country=?,currency=?,location=?,shop=?,shop_id=? WHERE id=?',[$phone,$carrier,$country,$currency,stringField($b,'location',50),$shop['name'],$shop['id'],$id]);if((int)$locked[0]['shop_id']!==(int)$shop['id']){query('DELETE FROM sim_shops WHERE sim_id=?',[$id]);query('INSERT INTO sim_shops(sim_id,shop_id) VALUES(?,?)',[$id,$shop['id']]);refreshBalance($id);}refreshBalance($id);syncSimDeviceScopes($id);db()->commit();
             }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}
             audit($u,'edit_sim',$id);return ['ok'=>true];
         }
@@ -113,7 +113,7 @@ function managementRoute(string $method,string $path,array $b,array $u): ?array 
         manageAdmin($u);$id=(int)$m[1];$target=asset('user',$id);
         if($method==='GET'&&!isset($m[2]))return array_intersect_key($target,array_flip(['id','username','role','active']));
         if(($method==='POST'&&($m[2]??'')==='disable')||$method==='DELETE'||$method==='PUT'){
-            if($id===(int)$u['id']&&$method!=='PUT')fail(422,'不能删除或禁用当前登录账户');
+            if($u['role']!=='admin'&&$id===(int)$u['id']&&$method!=='PUT')fail(422,'不能删除或禁用当前登录账户');
             $role=$method==='PUT'&&isset($b['role'])?stringField($b,'role',16):$target['role'];
             if(isset($b['active'])&&!is_bool($b['active'])&&!in_array($b['active'],[0,1],true))fail(422,'账户状态必须为启用或禁用');
             $active=$method==='PUT'?(isset($b['active'])?((bool)$b['active']?1:0):(int)$target['active']):0;
@@ -123,8 +123,8 @@ function managementRoute(string $method,string $path,array $b,array $u): ?array 
             if($pw!==''&&(strlen($pw)<6||strlen($pw)>72))fail(422,'密码为6至72字节');
             db()->beginTransaction();try{
                 $lockedTarget=query('SELECT * FROM users WHERE id=? AND deleted_at IS NULL FOR UPDATE',[$id]);if(!$lockedTarget||!canManageAccount($u,$lockedTarget[0]))fail(404,'账户不在可管理范围');$target=$lockedTarget[0];if($target['role']==='admin')requirePermission($u,'users.permissions');
-                guardAdminChange($target,$role,$active);
-                if($id===(int)$u['id']&&!$active)fail(422,'不能禁用当前登录账户');
+                if($u['role']!=='admin')guardAdminChange($target,$role,$active);
+                if($u['role']!=='admin'&&$id===(int)$u['id']&&!$active)fail(422,'不能禁用当前登录账户');
                 query('UPDATE users SET username=?,role=?,active=?,deleted_at=? WHERE id=?',[$name,$role,$active,$method==='DELETE'?microtime(true):null,$id]);
                 if($pw!==''){query('UPDATE users SET password=? WHERE id=?',[password_hash($pw,PASSWORD_DEFAULT),$id]);query('DELETE FROM sessions WHERE user_id=?',[$id]);}
                 if($method==='DELETE'||!$active||$role!==$target['role']||$name!==$target['username'])query('DELETE FROM sessions WHERE user_id=?',[$id]);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2 — 2026-10-27
+
+Backend only; Android remains 0.6.0. Administrators can change linked shop platforms, keep multiple shops per platform, transfer shops without platform conflicts, delete linked shops, and purge referenced trash with automatic association cleanup. Account ownership is reassigned on administrator purge, and current/final administrator accounts may be disabled or deleted. Country changes preserve historical ledger currencies and recalculate current balances. See docs/UPDATE-0.6.2.md.
+
 ## 0.6.1 — 2026-10-27
 
 Backend-only fix; Android remains0.6.0. Shop names may repeat, including names in trash; IDs, existing links, access scopes and old message snapshots stay distinct. Duplicate shop choices show a stable ID and available phone. Shop conflict messages are specific, and browser module caches are refreshed. See docs/UPDATE-0.6.1.md.

@@ -179,7 +179,7 @@ function legacyRoute(string $method,string $path,array $b): mixed {
         }
         audit($u,$kind,$id);return ['ok'=>true];
     }
-    if ($method==='GET' && $path==='/api/records'){[$limit,$offset]=listPage();header('X-Total-Count: '.query('SELECT COUNT(*) n FROM records WHERE deleted_at IS NULL AND '.dataScopeSql($u,'',false))[0]['n']);return query('SELECT r.*,COALESCE(s.currency,r.currency_snapshot) currency,r.phone_snapshot AS phone,r.shop_snapshot AS shop FROM records r LEFT JOIN sims s ON s.id=r.sim_id WHERE r.deleted_at IS NULL AND '.dataScopeSql($u,'r',false).' ORDER BY r.id DESC LIMIT '.$limit.' OFFSET '.$offset);}
+    if ($method==='GET' && $path==='/api/records'){[$limit,$offset]=listPage();header('X-Total-Count: '.query('SELECT COUNT(*) n FROM records WHERE deleted_at IS NULL AND '.dataScopeSql($u,'',false))[0]['n']);return query('SELECT r.*,r.currency_snapshot currency,r.phone_snapshot AS phone,r.shop_snapshot AS shop FROM records r LEFT JOIN sims s ON s.id=r.sim_id WHERE r.deleted_at IS NULL AND '.dataScopeSql($u,'r',false).' ORDER BY r.id DESC LIMIT '.$limit.' OFFSET '.$offset);}
     if ($method==='GET' && $path==='/api/audit'){[$limit,$offset]=listPage();header('X-Total-Count: '.query('SELECT COUNT(*) n FROM audit')[0]['n']);return query('SELECT * FROM audit ORDER BY id DESC LIMIT '.$limit.' OFFSET '.$offset);}
     if ($method==='GET' && $path==='/api/overview') {
         $ss=simRows();$dd=deviceRows();

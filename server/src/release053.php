@@ -9,15 +9,15 @@ function release053Route(array $u,string $method,string $path,array $b): ?array 
  }
  if($method==='POST'&&preg_match('#^/api/sims/(\d+)/transfer-shops$#D',$path,$m)){
   $source=(int)$m[1];$target=intField($b,'target_sim_id');$ids=$b['shop_ids']??null;
-  if($source===$target||!is_array($ids)||!array_is_list($ids)||!$ids||count($ids)>16||count(array_unique($ids))!==count($ids))fail(422,'请选择不同目标号码和需要转移的店铺');foreach($ids as $id)if(!is_int($id)||$id<1)fail(422,'店铺编号无效');sort($ids);
+  if($source===$target||!is_array($ids)||!array_is_list($ids)||!$ids||($u['role']!=='admin'&&count($ids)>16)||count(array_unique($ids))!==count($ids))fail(422,'请选择不同目标号码和需要转移的店铺');foreach($ids as $id)if(!is_int($id)||$id<1)fail(422,'店铺编号无效');sort($ids);
   db()->beginTransaction();try{
    $oldBindings=query('SELECT * FROM bindings WHERE sim_id IN (?,?) ORDER BY sim_id',[$source,$target]);$devices=array_unique(array_map('intval',array_column($oldBindings,'device_id')));sort($devices);foreach($devices as $device)query('SELECT id FROM devices WHERE id=? FOR UPDATE',[$device]);
    $simIds=[$source,$target];sort($simIds);foreach($simIds as $id)query('SELECT id FROM sims WHERE id=? FOR UPDATE',[$id]);
    if($oldBindings!==query('SELECT * FROM bindings WHERE sim_id IN (?,?) ORDER BY sim_id FOR UPDATE',[$source,$target]))fail(409,'号码绑定已变化，请刷新后重试');
    requireWholeSim($u,$source);requireWholeSim($u,$target);$from=simShops($source);$to=simShops($target);
    foreach($ids as $id){query('SELECT id FROM shops WHERE id=? FOR UPDATE',[$id]);if(!in_array($id,array_column($from,'id'),true))fail(409,'原号码店铺关联已变化，请刷新');if(in_array($id,array_column($to,'id'),true))fail(409,'目标号码已经关联该店铺');}
-   $moving=array_values(array_filter($from,fn($s)=>in_array((int)$s['id'],$ids,true)));foreach($moving as $shop)canonicalPlatform($shop);$merged=array_merge($to,$moving);if(count($merged)>16)fail(409,'目标号码关联店铺超过平台目录上限');
-   try{validateLinkedShopPlatforms($merged);}catch(ApiError $e){fail(409,'目标号码已有同平台店铺，请先核对关联');}
+   $moving=array_values(array_filter($from,fn($s)=>in_array((int)$s['id'],$ids,true)));foreach($moving as $shop)canonicalPlatform($shop);$merged=array_merge($to,$moving);if($u['role']!=='admin'&&count($merged)>16)fail(409,'目标号码关联店铺超过平台目录上限');
+   try{if($u['role']!=='admin')validateLinkedShopPlatforms($merged);}catch(ApiError $e){fail(409,'目标号码已有同平台店铺，请先核对关联');}
    saveSimLinks($u,$source,array_values(array_filter($from,fn($s)=>!in_array((int)$s['id'],$ids,true))));saveSimLinks($u,$target,$merged);
    foreach($oldBindings as $binding)query('UPDATE bindings SET version=? WHERE sim_id=?',[bin2hex(random_bytes(24)),$binding['sim_id']]);
    audit($u,'transfer_sim_shops',$source,['object_type'=>'sim','shop_ids'=>$ids,'summary'=>'将店铺关联从号码 #'.$source.' 转移到号码 #'.$target]);db()->commit();return ['ok'=>true,'source_sim_id'=>$source,'target_sim_id'=>$target,'shop_ids'=>$ids,'source_shops'=>simShops($source),'target_shops'=>simShops($target)];
@@ -42,6 +42,7 @@ function trashAuthorize(array $u,string $kind,int $id): array {
 }
 function purgeBlock(string $kind,int $id,array $r,array $u): ?string {
  if($r['deleted_at']===null)return '只能永久删除回收站中的数据';
+ if($u['role']==='admin')return null;
  if($kind==='user'){
   if($id===(int)$u['id'])return '不能永久删除自己';if($r['role']==='admin'&&query("SELECT id FROM users WHERE role='admin' AND active=1 AND deleted_at IS NULL AND id<>?",[$id])===[])return '必须保留可用管理员';
   if(query('SELECT id FROM sims WHERE created_by=? LIMIT 1',[$id])||query('SELECT id FROM devices WHERE created_by=? LIMIT 1',[$id]))return '账户仍拥有号码或设备，请先处理所属数据';
@@ -57,14 +58,33 @@ function purgeTrashItem(array $u,string $kind,int $id): array {
   audit($u,'purge_'.$kind,$id,['object_type'=>$kind,'summary'=>'永久删除回收站数据：'.($r['phone']??$r['name']??$r['username']??$r['phone_snapshot']??('#'.$id))]);
   if($kind==='message'){query('INSERT IGNORE INTO message_tombstones(device_id,event_id) VALUES(?,?)',[$r['device_id'],$r['event_id']]);query('UPDATE receive_checks SET message_id=NULL WHERE message_id=?',[$id]);}
   if($kind==='sim'){
+   query('DELETE FROM bindings WHERE sim_id=?',[$id]);
    query('UPDATE messages SET sim_id=NULL WHERE sim_id=?',[$id]);query('UPDATE records SET sim_id=NULL WHERE sim_id=?',[$id]);query('UPDATE receive_checks SET sim_id=NULL WHERE sim_id=?',[$id]);query('DELETE FROM sim_shops WHERE sim_id=?',[$id]);query('DELETE FROM number_pairings WHERE sim_id=?',[$id]);query('DELETE FROM sim_auto_pauses WHERE sim_id=?',[$id]);
   }
   if($kind==='device'){
+   query('DELETE FROM bindings WHERE device_id=?',[$id]);
    // History keeps immutable phone/shop snapshots; device identity is only a historical numeric reference.
    foreach(['device_scopes','device_telemetry','device_events','device_refresh_requests','receive_checks','number_pairings','sim_auto_pauses'] as $t)query("DELETE FROM `$t` WHERE device_id=?",[$id]);
   }
-  if($kind==='user')foreach(['sessions','user_permissions','user_shops','alert_mutes','alert_dismissals'] as $t)query("DELETE FROM `$t` WHERE user_id=?",[$id]);
-  if($kind==='shop')query('DELETE FROM user_shops WHERE shop_id=?',[$id]);
+  if($kind==='user'){
+   // Retain physical assets and readable snapshots when their former owner is removed.
+   if($u['role']==='admin'){
+   $owner=(int)$u['id']===$id?null:(int)$u['id'];
+   foreach(['sims','devices'] as $t)query("UPDATE `$t` SET created_by=? WHERE created_by=?",[$owner,$id]);
+   foreach(['messages','records'] as $t)query("UPDATE `$t` SET owner_id=? WHERE owner_id=?",[$owner,$id]);
+   }
+   foreach(['sessions','user_permissions','user_shops','alert_mutes','alert_dismissals','wx_bindings','wx_pending','wx_outbox'] as $t)query("DELETE FROM `$t` WHERE user_id=?",[$id]);
+   query('DELETE FROM number_pairings WHERE initiator_id=?',[$id]);
+  }
+  if($kind==='shop'){
+   detachShopLinks($u,$id);
+   // Removing a shop must not turn its history into the original creator's private data.
+   foreach(['messages','records'] as $t)query("UPDATE `$t` SET shop_id=NULL,owner_id=? WHERE shop_id=?",[$u['id'],$id]);
+   query('DELETE FROM user_shops WHERE shop_id=?',[$id]);
+  }
+  if($kind==='record'&&$r['kind']==='balances'){
+   query('DELETE FROM records WHERE id=? AND deleted_at IS NOT NULL',[$id]);if($r['sim_id']!==null)refreshBalance((int)$r['sim_id']);
+  }
   query("DELETE FROM `$table` WHERE id=? AND deleted_at IS NOT NULL",[$id]);db()->commit();return ['deleted'=>1,'skipped'=>[]];
  }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}
 }

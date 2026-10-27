@@ -15,11 +15,11 @@ class Element {
 }
 globalThis.Option=class extends Element {constructor(label,value){super('option',label);this.value=value}};
 function descendants(element){return [element,...element.children.flatMap(descendants)];}
-function harness({permissions=['sims.create','sims.view','sims.edit','shops.create','shops.edit'],sims=[],shops=[],failShops=false,failSims=false}={}){
- const state={sims,shops,devices:[],authGeneration:0},calls=[],boxes=[];
+function harness({role='operator',permissions=['sims.create','sims.view','sims.edit','shops.create','shops.edit'],sims=[],shops=[],users=[],failShops=false,failSims=false}={}){
+ const state={me:{role},sims,shops,devices:[],authGeneration:0},calls=[],boxes=[];
  const node=(...args)=>new Element(...args),button=(label,action,cls)=>{const out=node('button','',cls);out.append(node('span',label));out.action=action;return out};
  const modal=(title)=>{const box={title,d:node('dialog'),body:node('div'),footer:node('footer'),close(){state.modal=null}};state.modal=box.d;boxes.push(box);return box};
- const api=async(path,method='GET',payload)=>{calls.push({path,method,payload});if(method==='GET'){if(path==='shops'){if(failShops)throw Error('shops unavailable');return shops}if(path==='sims'){if(failSims)throw Error('sims unavailable');return sims}return []}return {id:99}};
+ const api=async(path,method='GET',payload)=>{calls.push({path,method,payload});if(method==='GET'){if(path==='shops'){if(failShops)throw Error('shops unavailable');return shops}if(path==='admin/users')return users;if(path==='sims'){if(failSims)throw Error('sims unavailable');return sims}return []}return {id:99}};
  const ui={state,node,button,modal,api,can:p=>permissions.includes(p),render:async()=>{},toast(){},platformFilter:()=>node('div'),localSearch:()=>node('form'),panel:(a,b,c)=>c,table:()=>node('table'),empty:()=>node('div'),platformBadges:values=>node('span',values?.join(',')),carriers:[{value:'Globe',label:'Globe'},{value:'中国移动',label:'中国移动'}],stack:(a,b)=>node('span',a+b),badge:node,money:()=>'',bindNumber:s=>calls.push({bind:s.id})};
  const manager=createNumberManagement(ui);
  const nodes=box=>[...descendants(box.body),...descendants(box.footer)],field=(box,name)=>nodes(box).find(e=>e.name===name),save=box=>box.footer.children.at(-1),submit=box=>nodes(box).find(e=>e.tagName==='form').onsubmit({preventDefault(){}});
@@ -103,4 +103,31 @@ test('unlinked shop disclosure state resets with the account and rejects old eve
  const previous=h.manager.view().at(-1);previous.open=true;previous.listeners.toggle?.();
  h.state.authGeneration++;assert.equal(h.manager.view().at(-1).open,false);
  previous.listeners.toggle?.();assert.equal(h.manager.view().at(-1).open,false);
+});
+
+
+test('administrator can transfer shops onto a number already using the same platform',async()=>{
+ const source={id:1,phone:'+639171234567',shops:[{id:8,name:'店铺A',platform:'tiktok'}]},target={id:2,phone:'+639181234567',shops:[{id:9,name:'店铺B',platform:'tiktok'}]};
+ const h=harness({role:'admin',sims:[source,target]}),box=await h.manager.transferShops(source);h.field(box,'target_sim_id').value='2';h.field(box,'target_sim_id').onchange();
+ assert.equal(h.save(box).disabled,false);await h.submit(box);assert.equal(h.calls.at(-1).path,'sims/1/transfer-shops');
+});
+test('administrator can add another shop on one platform and retains both on next edit',async()=>{
+ const shops=[{id:8,name:'店铺A',platform:'tiktok'},{id:9,name:'店铺B',platform:'tiktok'}],sim={id:1,phone:'+639171234567',country:'PH',carrier:'Globe',shops};
+ const h=harness({role:'admin',sims:[sim],shops}),box=await h.manager.dialog({sim});
+ assert.equal(h.nodes(box).filter(e=>e.name==='shop_tiktok').length,2);
+ const add=h.nodes(box).find(e=>e.tagName==='button'&&e.lastChild.textContent==='再加一家 TikTok 店铺');assert.ok(add);await add.action();
+ const newName=h.nodes(box).filter(e=>e.name==='name_tiktok').at(-1);newName.value='新店铺';await h.submit(box);
+ const entries=h.calls.find(c=>c.method==='PUT').payload.shops;assert.deepEqual(entries.map(e=>e.shop_id||e.name),[8,9,'新店铺']);
+});
+
+
+test('administrator can leave number reuse after adding another same-platform row',async()=>{
+ const shops=[{id:8,name:'店铺A',platform:'tiktok'}],sim={id:1,phone:'+639171234567',country:'PH',carrier:'Globe',shops};
+ const h=harness({role:'admin',sims:[sim],shops}),box=await h.manager.dialog();h.field(box,'phone').value='9171234567';h.field(box,'phone').listeners.input();const reuse=h.field(box,'reuse_sim');reuse.checked=true;reuse.onchange();
+ await h.nodes(box).find(e=>e.tagName==='button'&&e.lastChild.textContent==='再加一家 TikTok 店铺').action();const newName=h.nodes(box).filter(e=>e.name==='name_tiktok').at(-1);newName.value='草稿店铺';
+ reuse.checked=false;assert.doesNotThrow(()=>reuse.onchange());assert.equal(newName.value,'草稿店铺');h.field(box,'phone').value='9181234567';h.field(box,'phone').listeners.input();await h.submit(box);assert.equal(h.calls.find(c=>c.method==='POST').payload.phone,'+639181234567');
+});
+test('new same-platform rows can assign operators loaded before the row existed',async()=>{
+ const h=harness({role:'admin',permissions:['sims.create','sims.view','shops.create','users.permissions'],users:[{id:6,role:'operator',active:1,username:'Operator X'}]}),box=await h.manager.dialog();
+ await h.nodes(box).find(e=>e.tagName==='button'&&e.lastChild.textContent==='再加一家 TikTok 店铺').action();const operator=h.nodes(box).filter(e=>e.name==='operator_tiktok').at(-1);assert.equal(operator.options.some(o=>o.value==='6'),true);
 });

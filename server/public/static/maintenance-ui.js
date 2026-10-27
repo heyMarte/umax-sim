@@ -1,4 +1,4 @@
-import {fullTime} from './ui-data.js?v=061';
+import {fullTime} from './ui-data.js?v=062';
 
 export function createMaintenanceViews(ui){
  const {state,node,button,modal,api,can,render,toast,panel,table,empty,badge,stack,notificationButton,handleAlert,historyPager}=ui;
@@ -23,7 +23,7 @@ export function createMaintenanceViews(ui){
  }
  function purgeDialog(item){
   const clearing=!item,kind=state.trashKind||'all',kindLabels={all:'全部类型',device:'设备',sim:'号码',user:'账户',shop:'店铺',record:'流水',message:'短信'};
-  const box=modal(clearing?'清空回收站':'永久删除',clearing?'当前筛选：'+kindLabels[kind]:item.label),error=node('p','','form-error');box.body.append(node('p',clearing?'将永久删除当前筛选范围内允许删除的回收站项目。无法恢复；有关联限制的项目会保留并说明原因。':'此项目将从回收站永久删除，无法恢复。历史关联受限制时，系统会阻止删除并说明原因。','callout warn'),error);
+  const box=modal(clearing?'清空回收站':'永久删除',clearing?'当前筛选：'+kindLabels[kind]:item.label),error=node('p','','form-error');box.body.append(node('p',state.me?.role==='admin'?(clearing?'永久清空当前筛选范围内的回收站项目，并自动处理关联。手机卡和历史记录按各自项目分别管理。':'永久删除此项目并自动解除相关绑定或关联；其他手机卡和历史记录保留。'):(clearing?'将永久删除当前筛选范围内允许删除的回收站项目。无法恢复；有关联限制的项目会保留并说明原因。':'此项目将从回收站永久删除，无法恢复。历史关联受限制时，系统会阻止删除并说明原因。'),'callout warn'),error);
   const save=button(clearing?'确认永久清空':'确认永久删除',async()=>{save.disabled=true;const generation=state.authGeneration||0;error.textContent='';try{
    const result=await api(clearing?'admin/trash/clear':'admin/trash/'+item.kind+'/'+item.id,clearing?'POST':'DELETE',clearing?{kind}:undefined);if(generation!==(state.authGeneration||0))return;
    if(clearing){state.historyPages??={};state.historyPages.trash=1}else if((state.trash||[]).length===1&&(state.historyPages?.trash||1)>1)state.historyPages.trash--;
@@ -34,7 +34,7 @@ export function createMaintenanceViews(ui){
  function trash(){
   const kinds={device:'设备',sim:'号码',user:'账户',shop:'店铺',record:'流水',message:'短信'},rows=(state.trash||[]).map(t=>{const actions=node('div',undefined,'toolbar-group trash-actions');if(can('trash.restore')&&t.can_restore!==false)actions.append(button('恢复',()=>ui.confirmDialog('恢复 '+t.label,'设备恢复后保持停止，账户保持禁用。号码绑定需重新设置。',()=>api('admin/restore/'+t.kind+'/'+t.id,'POST'),'恢复'),'secondary small'));if(can('trash.purge')){const b=button('永久删除',()=>purgeDialog(t),'quiet small danger');if(t.can_purge!==true){b.disabled=true;b.title=t.purge_block_reason||'当前账户没有对应删除权限或存在关联限制'}actions.append(b);if(b.disabled)actions.append(node('span',b.title,'subline'))}return [t.label,kinds[t.kind],fullTime(t.deleted_at),actions]});
   const pager=historyPager('trash');if(can('trash.purge')&&(state.trash||[]).length)pager.append(button('清空当前筛选',()=>purgeDialog(),'quiet small danger'));
-  const out=[pager];if(state.maintenanceNotice&&state.maintenanceNoticePage==='trash')out.push(node('p',state.maintenanceNotice,'callout'));out.push(panel('回收站','恢复可继续使用；永久删除无法恢复，历史关联受限的项目会保留。',rows.length?table(['名称','类型','删除时间','操作'],rows):empty('回收站为空','删除后的数据会显示在这里。')));return out;
+  const out=[pager];if(state.maintenanceNotice&&state.maintenanceNoticePage==='trash')out.push(node('p',state.maintenanceNotice,'callout'));out.push(panel('回收站',state.me?.role==='admin'?'管理员可恢复、永久删除或清空，关联会自动处理。':'恢复可继续使用；永久删除无法恢复，历史关联受限的项目会保留。',rows.length?table(['名称','类型','删除时间','操作'],rows):empty('回收站为空','删除后的数据会显示在这里。')));return out;
  }
  return {alerts,trash};
 }

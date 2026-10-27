@@ -9,14 +9,14 @@ function release053Route(array $u,string $method,string $path,array $b): ?array 
  }
  if($method==='POST'&&preg_match('#^/api/sims/(\d+)/transfer-shops$#D',$path,$m)){
   $source=(int)$m[1];$target=intField($b,'target_sim_id');$ids=$b['shop_ids']??null;
-  if($source===$target||!is_array($ids)||!array_is_list($ids)||!$ids||count($ids)>count(platform_keys())||count(array_unique($ids))!==count($ids))fail(422,'请选择不同目标号码和需要转移的店铺');foreach($ids as $id)if(!is_int($id)||$id<1)fail(422,'店铺编号无效');sort($ids);
+  if($source===$target||!is_array($ids)||!array_is_list($ids)||!$ids||count($ids)>16||count(array_unique($ids))!==count($ids))fail(422,'请选择不同目标号码和需要转移的店铺');foreach($ids as $id)if(!is_int($id)||$id<1)fail(422,'店铺编号无效');sort($ids);
   db()->beginTransaction();try{
    $oldBindings=query('SELECT * FROM bindings WHERE sim_id IN (?,?) ORDER BY sim_id',[$source,$target]);$devices=array_unique(array_map('intval',array_column($oldBindings,'device_id')));sort($devices);foreach($devices as $device)query('SELECT id FROM devices WHERE id=? FOR UPDATE',[$device]);
    $simIds=[$source,$target];sort($simIds);foreach($simIds as $id)query('SELECT id FROM sims WHERE id=? FOR UPDATE',[$id]);
    if($oldBindings!==query('SELECT * FROM bindings WHERE sim_id IN (?,?) ORDER BY sim_id FOR UPDATE',[$source,$target]))fail(409,'号码绑定已变化，请刷新后重试');
    requireWholeSim($u,$source);requireWholeSim($u,$target);$from=simShops($source);$to=simShops($target);
    foreach($ids as $id){query('SELECT id FROM shops WHERE id=? FOR UPDATE',[$id]);if(!in_array($id,array_column($from,'id'),true))fail(409,'原号码店铺关联已变化，请刷新');if(in_array($id,array_column($to,'id'),true))fail(409,'目标号码已经关联该店铺');}
-   $moving=array_values(array_filter($from,fn($s)=>in_array((int)$s['id'],$ids,true)));$merged=array_merge($to,$moving);if(count($merged)>count(platform_keys()))fail(409,'目标号码关联店铺超过平台目录上限');
+   $moving=array_values(array_filter($from,fn($s)=>in_array((int)$s['id'],$ids,true)));foreach($moving as $shop)canonicalPlatform($shop);$merged=array_merge($to,$moving);if(count($merged)>16)fail(409,'目标号码关联店铺超过平台目录上限');
    try{validateLinkedShopPlatforms($merged);}catch(ApiError $e){fail(409,'目标号码已有同平台店铺，请先核对关联');}
    saveSimLinks($u,$source,array_values(array_filter($from,fn($s)=>!in_array((int)$s['id'],$ids,true))));saveSimLinks($u,$target,$merged);
    foreach($oldBindings as $binding)query('UPDATE bindings SET version=? WHERE sim_id=?',[bin2hex(random_bytes(24)),$binding['sim_id']]);

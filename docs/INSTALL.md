@@ -27,7 +27,7 @@ CLI扩展与网站PHP扩展可能不同，两边都要确认。
 2. 放行HTTP80和HTTPS443；数据库仅向必要的本机或私有网络开放。
 3. 在宝塔创建PHP8.2站点及独立的utf8mb4数据库，记录数据库名、用户名和密码。
 4. 上传正式发行的源码包到项目目录。若从Git仓库取源码，部署指定release/tag；不要把工作目录、数据库备份和历史APK全部上传到网站。
-5. 站点公开根目录设为`/www/wwwroot/umax-sim/server/public`。站点可访问的项目目录须包含server根目录，以便PHP读取src与config；保留站点的open_basedir隔离。
+5. 站点公开根目录设为`/www/wwwroot/umax-sim/server/public`。站点可访问的项目目录须包含server根目录，以便PHP读取src与config；保留站点的open_basedir隔离；所需的PHP CLI真实路径和私有备份目录也要加入本站允许范围，见下节。
 
 ## 3. 填写配置并设置权限
 
@@ -61,6 +61,18 @@ chmod 640 /www/wwwroot/umax-sim/server/config/config.php
 ```
 
 目录不设置为777。在线升级会改写程序目录，仅在启用此功能时按后台环境检查授予必要的站点代码写权限，并保留上线前备份。
+
+### 宝塔open_basedir允许范围
+
+如果使用上述CLI及备份路径，本站PHP允许范围除server根目录和系统临时目录外，还需包含PHP8.2真实安装目录和备份目录，例如：
+
+```ini
+open_basedir=/www/wwwroot/umax-sim/server/:/tmp/:/www/server/php/82/:/var/lib/umax-sim-backups/
+```
+
+在宝塔对**此站点**维护生效的防跨站/.user.ini或PHP-FPM站点配置，不全局关闭隔离。若CLI是符号链接，加入`readlink -f /www/server/php/82/bin/php`所指向的实际安装目录。路径都替换为本站实际值，保存并重新加载生效配置。
+
+只允许server目录时，后台的is_file(php_cli)及备份状态检查会被open_basedir阻止，即使命令行可正常执行也会显示升级环境失败。也可把私有备份目录放到server/var/backups下（仍在public之外），这样无需额外放行/var/lib路径；修改backup_dir后同步调整计划任务。
 
 ## 4. 初始化并创建管理员
 

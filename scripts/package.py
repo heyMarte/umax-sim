@@ -4,9 +4,7 @@ from pathlib import Path
 import hashlib,json,subprocess,zipfile
 root=Path(__file__).resolve().parents[1];out=root/'dist';out.mkdir(exist_ok=True)
 subprocess.run(['python3',str(root/'scripts/check-source.py')],check=True)
-files=[p for p in subprocess.check_output(['git','-C',str(root),'ls-files','--cached','--others','--exclude-standard','-z']).decode().split('\0') if p]
-allowed_roots={'server','android','docs','scripts','licenses','.github'};allowed_top={'README.md','LICENSE','THIRD_PARTY_NOTICES.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','PROJECT-DESCRIPTION.md','.gitignore','.gitattributes'}
-files=sorted(set(p for p in files if Path(p).parts[0] in allowed_roots or p in allowed_top))
+files=json.loads((root/'source-manifest.json').read_text())['files']
 def content(path):
  f=root/path
  if f.is_symlink():raise RuntimeError('Symlink in package')

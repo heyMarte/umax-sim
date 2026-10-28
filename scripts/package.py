@@ -28,7 +28,7 @@ for p in files:
  if not p.startswith('server/'):continue
  if rel.startswith(('src/','bin/','public/','docs/')) and Path(rel).suffix in {'.php','.sh','.js','.css','.html','.svg','.png','.woff','.woff2','.md'}:updates[rel]=content(p)
 updates['README.md']=content('README.md')
-manifest={'format':1,'version':version,'min_version':'0.4.3','notes':'Administrators can edit linked shop platforms, manage multiple same-platform shops, delete linked shops and purge referenced trash automatically. Backend only; App unchanged.','files':{p:{'size':len(raw),'sha256':hashlib.sha256(raw).hexdigest()} for p,raw in updates.items()}}
+manifest={'format':1,'version':version,'min_version':'0.4.3','notes':'Separate WeChat AppSecret permission; show official account name and follow QR to recipients. Backend only; App unchanged.','files':{p:{'size':len(raw),'sha256':hashlib.sha256(raw).hexdigest()} for p,raw in updates.items()}}
 archive(f'umax-sim-online-release-{version}.zip',updates|{'release.json':json.dumps(manifest,ensure_ascii=False,indent=2).encode()})
 (out/'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.glob(f'*-{version}.zip'))))
 print('PASS three allowlist archives and SHA256SUMS in dist/')

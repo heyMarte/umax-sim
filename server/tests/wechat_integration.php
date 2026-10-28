@@ -14,7 +14,7 @@ try{
  $st=wxRoute($admin,'GET','/api/wechat/status',[],$transport);check(isset($st['can_receive'])&&$st['can_receive']===true,'status explicitly reports receiving capability');
  $st=wxRoute($op,'GET','/api/wechat/status',[],$transport);check(!$st['can_manage'],'receive does not grant config');denied(fn()=>wxRoute($op,'PUT','/api/wechat/config',[], $transport),403,'operator config forbidden');
  query('UPDATE wx_config SET enabled=0,tested_revision=NULL WHERE id=1');
- wxRoute($admin,'PUT','/api/wechat/config',['app_id'=>'wx1111111111111111','app_secret'=>'FAKE_TEST_SECRET','origin'=>'https://sms.example.test'],$transport);
+ wxRoute($admin,'PUT','/api/wechat/config',['app_id'=>'wx1111111111111111','app_secret'=>'FAKE_TEST_SECRET','template_id'=>'fixture_template','origin'=>'https://sms.example.test'],$transport);
  $c=wxConfig();check(!$c['enabled']&&openSecret($c['secret_cipher'])==='FAKE_TEST_SECRET','config encrypted and disabled');check(!str_contains(json_encode(wxRoute($admin,'GET','/api/wechat/status',[])),'FAKE_TEST_SECRET'),'status secret redacted');
  $secret=$c['secret_cipher'];wxRoute($admin,'PUT','/api/wechat/config',['app_secret'=>''],$transport);check(wxConfig()['secret_cipher']===$secret,'blank secret retained');
  denied(fn()=>wxRoute($admin,'PUT','/api/wechat/config',['enabled'=>true],$transport),422,'must test before enable');

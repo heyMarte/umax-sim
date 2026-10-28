@@ -64,3 +64,5 @@ details.device-card .device-name{flex:1}.device-header-actions{display:flex;gap:
 
 details.device-card .device-name>div:last-child{min-width:0}details.device-card .device-name .stack-title{overflow-wrap:anywhere}@media(max-width:420px){details.device-card .device-meta{flex-basis:100%;justify-content:flex-start;flex-wrap:nowrap;margin-left:0}.device-toggle{margin-left:auto}}
 @media(max-width:760px){details.device-card .device-meta{flex-direction:row;align-items:center}}
+
+.wechat-account{border:1px solid #d8e5ec;background:#f6fbfa;border-radius:12px;padding:18px;margin-bottom:18px}.wechat-account h3{margin:0 0 8px}.wechat-account p{line-height:1.6}.wechat-follow-image{display:block;width:200px;max-width:100%;margin:12px 0}.wechat-follow-image img{display:block;max-width:100%;height:auto;object-fit:contain;background:#fff;border-radius:8px}.wechat-config-qr{display:block;width:100px;height:100px;object-fit:contain;background:#fff;margin-top:8px}.wechat-config input[type=file]{max-width:100%;font-size:12px}.wechat-account .field-help{margin-bottom:10px}

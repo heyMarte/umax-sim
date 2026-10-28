@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.3 — 2026-10-28
+
+Backend only; Android unchanged. Independent AppSecret write permission with server enforcement and no saved-secret readback. Add official-account name and raster follow-QR upload; receiving users and OAuth confirmation pages show which account to follow before personal binding. Identity edits preserve working push configuration. Includes permission, image validation, status redaction and binding regression tests. See docs/UPDATE-0.6.3.md.
+
 ## 0.6.2 — 2026-10-27
 
 Backend only; Android remains 0.6.0. Administrators can change linked shop platforms, keep multiple shops per platform, transfer shops without platform conflicts, delete linked shops, and purge referenced trash with automatic association cleanup. Account ownership is reassigned on administrator purge, and current/final administrator accounts may be disabled or deleted. Country changes preserve historical ledger currencies and recalculate current balances. See docs/UPDATE-0.6.2.md.

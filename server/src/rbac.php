@@ -12,7 +12,7 @@ function permissionCatalog(): array {
  'users'=>['账户及授权',['users.view'=>'查看账户','users.create'=>'新增账户','users.edit'=>'编辑及禁用账户','users.delete'=>'删除账户','users.permissions'=>'分配自己范围内的权限与店铺']],
  'audit'=>['操作记录',['audit.view'=>'查看本人操作记录（店铺受限）','audit.all'=>'查看授权店铺内全员记录']],
  'trash'=>['回收站',['trash.view'=>'查看授权范围回收站','trash.restore'=>'恢复数据（仍需对应管理权限）','trash.purge'=>'永久删除回收站数据']],
- 'wechat'=>['微信推送',['wechat.manage'=>'配置全站微信推送通道','wechat.receive'=>'接收本人授权范围验证码']],
+ 'wechat'=>['微信推送',['wechat.manage'=>'配置公众号资料和微信推送通道','wechat.secrets.manage'=>'设置和更换公众号密钥（原密钥不回显）','wechat.receive'=>'接收本人授权范围验证码']],
  'backup'=>['备份',['backup.view'=>'查看全站备份状态与恢复说明']]];
  $out=[];foreach($groups as $key=>[$label,$permissions]){$items=[];foreach($permissions as $p=>$l)$items[]=['key'=>$p,'label'=>$l];$out[]=['key'=>$key,'label'=>$label,'permissions'=>$items];}return ['groups'=>$out];
 }

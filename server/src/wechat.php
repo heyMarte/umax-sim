@@ -10,8 +10,22 @@ function wxMigrate():void {
  "CREATE TABLE IF NOT EXISTS wx_outbox(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,message_id BIGINT UNSIGNED NULL,user_id BIGINT UNSIGNED NOT NULL,binding_version CHAR(48) NOT NULL,revision INT NOT NULL,status VARCHAR(20) NOT NULL DEFAULT 'queued',attempts INT NOT NULL DEFAULT 0,next_at DOUBLE NOT NULL,expires_at DOUBLE NOT NULL,error_code VARCHAR(40) NULL,created_at DOUBLE NOT NULL,updated_at DOUBLE NOT NULL,UNIQUE KEY message_recipient(message_id,user_id),INDEX(status,next_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
  ];foreach($ddl as $sql)db()->exec($sql);
  query('INSERT IGNORE INTO wx_config(id,template_id,origin) VALUES(1,?,?)',['','']);
+ $columns=array_column(query('SHOW COLUMNS FROM wx_config'),'Field');
+ if(!in_array('account_name',$columns,true))db()->exec("ALTER TABLE wx_config ADD COLUMN account_name VARCHAR(100) NOT NULL DEFAULT ''");
+ if(!in_array('follow_qr',$columns,true))db()->exec('ALTER TABLE wx_config ADD COLUMN follow_qr MEDIUMTEXT NULL');
 }
 function wxConfig():array{return query('SELECT * FROM wx_config WHERE id=1')[0];}
+function wxQrImage(string $value):array {
+ if(strlen($value)>750000||!preg_match('#^data:(image/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$#D',$value,$m))fail(422,'请上传 PNG、JPG 或 WebP 格式的公众号关注二维码');
+ $bytes=base64_decode($m[2],true);$info=$bytes===false?false:@getimagesizefromstring($bytes);
+ if($bytes===false||strlen($bytes)>524288||!$info||($info['mime']??'')!==$m[1]||$info[0]>4096||$info[1]>4096)fail(422,'二维码图片无效，请上传不超过512KB、4096像素的图片');
+ return ['type'=>$m[1],'bytes'=>$bytes];
+}
+function wxAccount(array $c):array {return ['name'=>$c['account_name']??'','qr_url'=>empty($c['follow_qr'])?null:'/wx/follow-qr/'.hash('sha256',$c['follow_qr'])];}
+function wxFollowHtml(array $c):string {
+ $a=wxAccount($c);$name=htmlspecialchars($a['name'],ENT_QUOTES,'UTF-8');
+ return '<section><h2>先关注公众号</h2><p>'.($name!==''?'请关注「'.$name.'」，以便接收验证码通知。':'管理员尚未设置公众号名称，请联系管理员确认。').'</p>'.($a['qr_url']?'<img src="'.$a['qr_url'].'" alt="公众号关注二维码" width="240"><p>在微信中长按关注二维码，识别后关注。</p>':'<p>管理员尚未上传关注二维码。</p>').'</section>';
+}
 function wxFresh(array $m):bool{$age=microtime(true)-(float)$m['received_at'];return $age>=-60&&$age<300&&is_string($m['otp_code']??null)&&preg_match('/^[A-Za-z0-9]{4,32}$/D',$m['otp_code'])===1;}
 function wxPayload(array $c,string $openid,string $device,string $code,float $at):array {
  return ['touser'=>$openid,'template_id'=>$c['template_id'],'url'=>$c['origin'].'/#messages','data'=>['thing1'=>['value'=>mb_substr($device,0,20)],'character_string15'=>['value'=>$code],'time4'=>['value'=>(new DateTimeImmutable('@'.(int)$at))->setTimezone(new DateTimeZone('Asia/Shanghai'))->format('Y-m-d H:i:s')]]];
@@ -66,7 +80,7 @@ function wxUser(int $id):?array{$r=query('SELECT * FROM users WHERE id=? AND act
 function wxBinding(array $u,array $c):?array{return query('SELECT * FROM wx_bindings WHERE user_id=? AND app_id=?',[$u['id'],$c['app_id']])[0]??null;}
 function wxHint(string $openid):string{return '微信身份 '.substr(hash('sha256',$openid),0,8);}
 function wxBindingView(array $u,array $c):array{$b=wxBinding($u,$c);return ['bound'=>$b!==null,'follower'=>$b?(bool)$b['follower']:null,'identity_hint'=>$b?wxHint($b['openid']):null,'version'=>$b['version']??null];}
-function wxRedacted(array $c):array{return ['enabled'=>(bool)$c['enabled'],'app_id'=>$c['app_id'],'secret_set'=>(bool)$c['secret_cipher'],'template_id'=>$c['template_id'],'origin'=>$c['origin'],'revision'=>(int)$c['revision'],'tested'=>(int)($c['tested_revision']??0)===(int)$c['revision'],'worker_at'=>$c['worker_at']===null?null:(float)$c['worker_at']];}
+function wxRedacted(array $c,?array $u=null):array{$out=['enabled'=>(bool)$c['enabled'],'app_id'=>$c['app_id'],'template_id'=>$c['template_id'],'origin'=>$c['origin'],'revision'=>(int)$c['revision'],'tested'=>(int)($c['tested_revision']??0)===(int)$c['revision'],'worker_at'=>$c['worker_at']===null?null:(float)$c['worker_at']];if($u!==null&&can($u,'wechat.secrets.manage'))$out['secret_set']=(bool)$c['secret_cipher'];return $out;}
 function wxCancel(?int $uid=null):void{query("UPDATE wx_outbox SET status='cancelled',error_code='changed',updated_at=? WHERE status IN ('queued','retry')".($uid===null?'':' AND user_id=?'),$uid===null?[microtime(true)]:[microtime(true),$uid]);}
 function wxEnqueue(int $messageId):void {
  if(!db()->inTransaction())throw new LogicException('wxEnqueue requires SMS transaction');
@@ -83,24 +97,27 @@ function wxPending(array $u,string $token,array $c):array {
 function wxRoute(array $u,string $method,string $path,array $body,?callable $transport=null):?array {
  if(!str_starts_with($path,'/api/wechat/'))return null;
  $c=wxConfig();
- if($path==='/api/wechat/status'&&$method==='GET'){if(!can($u,'wechat.manage'))wxReceiver($u);return ['config'=>wxRedacted($c),'binding'=>can($u,'wechat.receive')?wxBindingView($u,$c):['bound'=>false],'can_manage'=>can($u,'wechat.manage'),'can_receive'=>wxCanReceive($u),'worker_at'=>$c['worker_at']===null?null:(float)$c['worker_at'],'last_error_code'=>query('SELECT error_code FROM wx_outbox WHERE user_id=? AND error_code IS NOT NULL ORDER BY id DESC LIMIT 1',[$u['id']])[0]['error_code']??null];}
+ if($path==='/api/wechat/status'&&$method==='GET'){if(!can($u,'wechat.manage')&&!can($u,'wechat.secrets.manage'))wxReceiver($u);return ['config'=>wxRedacted($c,$u),'account'=>wxAccount($c),'can_manage_secret'=>can($u,'wechat.secrets.manage'),'binding'=>can($u,'wechat.receive')?wxBindingView($u,$c):['bound'=>false],'can_manage'=>can($u,'wechat.manage'),'can_receive'=>wxCanReceive($u),'worker_at'=>$c['worker_at']===null?null:(float)$c['worker_at'],'last_error_code'=>query('SELECT error_code FROM wx_outbox WHERE user_id=? AND error_code IS NOT NULL ORDER BY id DESC LIMIT 1',[$u['id']])[0]['error_code']??null];}
  if($path==='/api/wechat/config'&&$method==='PUT'){
- requirePermission($u,'wechat.manage');$n=$c;
- foreach(['app_id'=>64,'template_id'=>128,'origin'=>255] as $k=>$len)if(array_key_exists($k,$body))$n[$k]=trim(stringField($body,$k,$len));
- if($n['app_id']!==''&&!preg_match('/^wx[a-fA-F0-9]{16}$/D',$n['app_id']))fail(422,'AppID 格式错误');
- if(!preg_match('/^[A-Za-z0-9_-]{1,128}$/D',$n['template_id']))fail(422,'模板 ID 格式错误');
- $o=parse_url($n['origin']);if(!$o||($o['scheme']??'')!=='https'||empty($o['host'])||isset($o['user'])||isset($o['pass'])||isset($o['query'])||isset($o['fragment'])||(!empty($o['path'])&&$o['path']!=='/')||isset($o['port']))fail(422,'授权站点必须为 HTTPS 根域名');$n['origin']=rtrim($n['origin'],'/');
- if(array_key_exists('app_secret',$body)){$s=stringField($body,'app_secret',256,false);if($s!=='')$n['secret_cipher']=sealSecret($s);}
- $changed=$n['app_id']!==$c['app_id']||$n['template_id']!==$c['template_id']||$n['origin']!==$c['origin']||$n['secret_cipher']!==$c['secret_cipher'];
- if(array_key_exists('enabled',$body)&&!is_bool($body['enabled']))fail(422,'开关格式错误');$enabled=$body['enabled']??(bool)$c['enabled'];
- if($enabled&&($changed||!$c['secret_cipher']||$c['app_id']===''||(int)$c['tested_revision']!==(int)$c['revision']))fail(422,'请先保存配置、绑定本人微信并测试成功后开启');
+ if(array_key_exists('app_secret',$body))requirePermission($u,'wechat.secrets.manage');
+ if(array_diff(array_keys($body),['app_secret'])||!array_key_exists('app_secret',$body))requirePermission($u,'wechat.manage');
  if(!wxLock('worker',5))fail(409,'微信任务处理中，请重试');
- try{db()->beginTransaction();$live=wxConfig();if((int)$live['revision']!==(int)$c['revision'])fail(409,'配置已变化，请刷新');
- query('UPDATE wx_config SET enabled=?,app_id=?,secret_cipher=?,template_id=?,origin=?,revision=?,tested_revision=?,token_cipher=?,token_until=? WHERE id=1',[$changed?0:(int)$enabled,$n['app_id'],$n['secret_cipher'],$n['template_id'],$n['origin'],(int)$c['revision']+($changed?1:0),$changed?null:$c['tested_revision'],$changed?null:$c['token_cipher'],$changed?null:$c['token_until']]);
- if($n['app_id']!==$c['app_id'])query('DELETE FROM wx_bindings');
+ try{db()->beginTransaction();$c=wxConfig();$n=$c;
+ foreach(['app_id'=>64,'template_id'=>128,'origin'=>255] as $k=>$len)if(array_key_exists($k,$body))$n[$k]=trim(stringField($body,$k,$len));
+ if(array_key_exists('app_id',$body)&&$n['app_id']!==''&&!preg_match('/^wx[a-fA-F0-9]{16}$/D',$n['app_id']))fail(422,'AppID 格式错误');
+ if(array_key_exists('template_id',$body)&&!preg_match('/^[A-Za-z0-9_-]{1,128}$/D',$n['template_id']))fail(422,'模板 ID 格式错误');
+ if(array_key_exists('origin',$body)){$o=parse_url($n['origin']);if(!$o||($o['scheme']??'')!=='https'||empty($o['host'])||isset($o['user'])||isset($o['pass'])||isset($o['query'])||isset($o['fragment'])||(!empty($o['path'])&&$o['path']!=='/')||isset($o['port']))fail(422,'授权站点必须为 HTTPS 根域名');$n['origin']=rtrim($n['origin'],'/');}
+ if(array_key_exists('app_secret',$body)){$secret=stringField($body,'app_secret',256,false);if($secret!=='')$n['secret_cipher']=sealSecret($secret);}
+ if(array_key_exists('account_name',$body))$n['account_name']=trim(stringField($body,'account_name',100,false));
+ if(array_key_exists('follow_qr',$body)){$qr=stringField($body,'follow_qr',750000,false);if($qr!=='')wxQrImage($qr);$n['follow_qr']=$qr===''?null:$qr;}
+ $changed=$n['app_id']!==$c['app_id']||$n['template_id']!==$c['template_id']||$n['origin']!==$c['origin']||$n['secret_cipher']!==$c['secret_cipher'];
+ if(array_key_exists('enabled',$body)&&!is_bool($body['enabled']))fail(422,'开关格式错误');$enabled=$body['enabled']??($changed?false:(bool)$c['enabled']);
+ if($enabled&&($changed||!$c['secret_cipher']||$c['app_id']===''||$c['template_id']===''||$c['origin']===''||(int)$c['tested_revision']!==(int)$c['revision']))fail(422,'请先保存配置、绑定本人微信并测试成功后开启');
+ query('UPDATE wx_config SET enabled=?,app_id=?,secret_cipher=?,template_id=?,origin=?,revision=?,tested_revision=?,token_cipher=?,token_until=?,account_name=?,follow_qr=? WHERE id=1',[$changed?0:(int)$enabled,$n['app_id'],$n['secret_cipher'],$n['template_id'],$n['origin'],(int)$c['revision']+($changed?1:0),$changed?null:$c['tested_revision'],$changed?null:$c['token_cipher'],$changed?null:$c['token_until'],$n['account_name'],$n['follow_qr']]);
+ if($n['app_id']!==$c['app_id']){query('DELETE FROM wx_bindings');if(!array_key_exists('account_name',$body))query("UPDATE wx_config SET account_name='' WHERE id=1");if(!array_key_exists('follow_qr',$body))query('UPDATE wx_config SET follow_qr=NULL WHERE id=1');}
  if($changed||!$enabled){wxCancel();query("UPDATE wx_pending SET status='expired',state=NULL WHERE status IN ('waiting','pending','authorizing','exchanging')");}db()->commit();
  }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}finally{wxUnlock('worker');}
- audit($u,'wechat_config',1,['summary'=>'修改微信推送配置']);return ['config'=>wxRedacted(wxConfig())];
+ audit($u,'wechat_config',1,['summary'=>array_key_exists('app_secret',$body)?'设置公众号密钥（不记录密钥内容）':'修改微信推送配置']);$saved=wxConfig();return ['config'=>wxRedacted($saved,$u),'account'=>wxAccount($saved)];
  }
  wxReceiver($u);
  if($path==='/api/wechat/binding'){
@@ -115,7 +132,7 @@ function wxRoute(array $u,string $method,string $path,array $body,?callable $tra
  if($path==='/api/wechat/binding/confirm'&&$method==='POST'){
  $p=wxPending($u,stringField($body,'token',64),$c);if($p['status']!=='pending'||!$p['openid'])fail(409,'请先扫码授权，链接只能确认一次');
  if(!wxLock('worker',5))fail(409,'任务处理中，请重试');
- try{if(!wxFollower($c,$p['openid'],$transport))fail(422,'请先关注公众号再绑定');db()->beginTransaction();$p=wxPending($u,$p['token'],wxConfig());$locked=query('SELECT status FROM wx_pending WHERE token=? FOR UPDATE',[$p['token']])[0];if($p['status']!=='pending'||$locked['status']!=='pending')fail(409,'链接已使用或过期');
+ try{if(!wxFollower($c,$p['openid'],$transport))fail(422,'请先关注'.(($c['account_name']??'')!==''?'公众号「'.$c['account_name'].'」':'管理员指定的公众号').'再绑定');db()->beginTransaction();$p=wxPending($u,$p['token'],wxConfig());$locked=query('SELECT status FROM wx_pending WHERE token=? FOR UPDATE',[$p['token']])[0];if($p['status']!=='pending'||$locked['status']!=='pending')fail(409,'链接已使用或过期');
  if(query('SELECT user_id FROM wx_bindings WHERE app_id=? AND openid=? AND user_id<>?',[$c['app_id'],$p['openid'],$u['id']]))fail(409,'此微信已绑定其他账户，请先解绑');
  query('DELETE FROM wx_bindings WHERE user_id=?',[$u['id']]);query('INSERT INTO wx_bindings(user_id,app_id,openid,version,confirmed_at) VALUES(?,?,?,?,?)',[$u['id'],$c['app_id'],$p['openid'],bin2hex(random_bytes(24)),microtime(true)]);query("UPDATE wx_pending SET status='confirmed',state=NULL WHERE token=?",[$p['token']]);wxCancel((int)$u['id']);audit($u,'wechat_binding_confirm',$u['id'],['summary'=>'确认本人微信绑定']);db()->commit();return ['ok'=>true];
  }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();if($e instanceof ApiError)throw $e;fail(502,'微信身份确认失败，请稍后重试');}finally{wxUnlock('worker');}
@@ -131,8 +148,9 @@ function wxRoute(array $u,string $method,string $path,array $body,?callable $tra
  fail(404,'接口不存在');
 }
 function wxPublicRoute(string $method,string $path,?callable $transport=null):bool {
+ if($method==='GET'&&preg_match('#^/wx/follow-qr/([a-f0-9]{64})$#D',$path,$match)){$c=wxConfig();if(empty($c['follow_qr'])||!hash_equals(hash('sha256',$c['follow_qr']),$match[1]))fail(404,'公众号关注二维码已更新或尚未设置');$image=wxQrImage($c['follow_qr']);header('Content-Type: '.$image['type']);header('Cache-Control: public, max-age=86400, immutable');header('X-Content-Type-Options: nosniff');echo $image['bytes'];return true;}
  if($method!=='GET'||!in_array($path,['/wx/bind','/wx/callback'],true))return false;
- header('Cache-Control: no-store');header('Referrer-Policy: no-referrer');header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'");header('Content-Type: text/html; charset=utf-8');
+ header('Cache-Control: no-store');header('Referrer-Policy: no-referrer');header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'");header('Content-Type: text/html; charset=utf-8');
  try{$c=wxConfig();
  if($path==='/wx/bind'){
  $token=(string)($_GET['t']??'');$p=query("SELECT * FROM wx_pending WHERE token=? AND status='waiting' AND expires_at>? AND app_id=? AND revision=?",[$token,microtime(true),$c['app_id'],$c['revision']])[0]??null;if(!$p)throw new RuntimeException('expired');
@@ -143,7 +161,7 @@ function wxPublicRoute(string $method,string $path,?callable $transport=null):bo
  db()->beginTransaction();$p=query("SELECT * FROM wx_pending WHERE state=? AND status='authorizing' AND expires_at>? AND app_id=? AND revision=? FOR UPDATE",[$state,microtime(true),$c['app_id'],$c['revision']])[0]??null;if(!$p)throw new RuntimeException('expired');query("UPDATE wx_pending SET state=NULL,status='exchanging' WHERE token=?",[$p['token']]);db()->commit();
  $r=wxHttp('oauth',['appid'=>$c['app_id'],'secret'=>openSecret($c['secret_cipher']),'code'=>$code,'grant_type'=>'authorization_code'],$transport);$openid=$r['openid']??null;if(!is_string($openid)||!preg_match('/^[A-Za-z0-9_-]{1,128}$/D',$openid))throw new RuntimeException('oauth');
  query("UPDATE wx_pending SET openid=?,status='pending' WHERE token=? AND status='exchanging' AND revision=? AND expires_at>?",[$openid,$p['token'],$c['revision'],microtime(true)]);
- echo '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>微信授权</title><main><h1>授权已收到</h1><p>微信身份标识：'.htmlspecialchars(wxHint($openid),ENT_QUOTES,'UTF-8').'</p><p>请回到发起绑定的后台账户，核对微信身份标识并点击确认。扫码本身不会完成绑定。</p></main>';
+ echo '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>微信授权</title><main><h1>授权已收到</h1><p>微信身份标识：'.htmlspecialchars(wxHint($openid),ENT_QUOTES,'UTF-8').'</p><p>请回到发起绑定的后台账户，核对微信身份标识并点击确认。扫码本身不会完成绑定。</p>'.wxFollowHtml($c).'</main>';
  }catch(Throwable){if(db()->inTransaction())db()->rollBack();http_response_code(400);echo '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>绑定链接无效</title><h1>授权链接已使用、过期或不可用</h1><p>请回到后台重新生成绑定二维码。</p>';}
  return true;
 }

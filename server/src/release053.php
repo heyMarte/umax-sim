@@ -45,7 +45,7 @@ function purgeBlock(string $kind,int $id,array $r,array $u): ?string {
  if($u['role']==='admin')return null;
  if($kind==='user'){
   if($id===(int)$u['id'])return '不能永久删除自己';if($r['role']==='admin'&&query("SELECT id FROM users WHERE role='admin' AND active=1 AND deleted_at IS NULL AND id<>?",[$id])===[])return '必须保留可用管理员';
-  if(query('SELECT id FROM sims WHERE created_by=? LIMIT 1',[$id])||query('SELECT id FROM devices WHERE created_by=? LIMIT 1',[$id]))return '账户仍拥有号码或设备，请先处理所属数据';
+  if(query('SELECT id FROM mail_accounts WHERE created_by=? LIMIT 1',[$id])||query('SELECT id FROM sims WHERE created_by=? LIMIT 1',[$id])||query('SELECT id FROM devices WHERE created_by=? LIMIT 1',[$id]))return '账户仍拥有号码或设备，请先处理所属数据';
  }
  if($kind==='shop')foreach(['sims'=>'shop_id','sim_shops'=>'shop_id','messages'=>'shop_id','records'=>'shop_id','device_scopes'=>'shop_id'] as $table=>$col)if(query("SELECT $col FROM `$table` WHERE $col=? LIMIT 1",[$id]))return '店铺仍被号码、设备或历史数据引用，不能永久删除';
  if($kind==='device'&&query('SELECT sim_id FROM bindings WHERE device_id=? LIMIT 1',[$id]))return '设备仍有绑定，请先解除绑定';
@@ -70,11 +70,11 @@ function purgeTrashItem(array $u,string $kind,int $id): array {
    // Retain physical assets and readable snapshots when their former owner is removed.
    if($u['role']==='admin'){
    $owner=(int)$u['id']===$id?null:(int)$u['id'];
-   foreach(['sims','devices'] as $t)query("UPDATE `$t` SET created_by=? WHERE created_by=?",[$owner,$id]);
+   foreach(['sims','devices','mail_accounts'] as $t)query("UPDATE `$t` SET created_by=? WHERE created_by=?",[$owner,$id]);
    foreach(['messages','records'] as $t)query("UPDATE `$t` SET owner_id=? WHERE owner_id=?",[$owner,$id]);
    }
-   foreach(['sessions','user_permissions','user_shops','alert_mutes','alert_dismissals','wx_bindings','wx_pending','wx_outbox'] as $t)query("DELETE FROM `$t` WHERE user_id=?",[$id]);
-   query('DELETE FROM number_pairings WHERE initiator_id=?',[$id]);
+   foreach(['sessions','user_permissions','user_shops','alert_mutes','alert_dismissals','wx_bindings','wx_pending','wx_outbox','mail_grants'] as $t)query("DELETE FROM `$t` WHERE user_id=?",[$id]);
+   query('DELETE FROM number_pairings WHERE initiator_id=?',[$id]);query('DELETE FROM mail_oauth WHERE initiator_id=?',[$id]);
   }
   if($kind==='shop'){
    detachShopLinks($u,$id);

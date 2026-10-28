@@ -1,5 +1,5 @@
-import {renderPairingQr} from './pairing-qr.js?v=063';
-import {fullTime} from './ui-data.js?v=063';
+import {renderPairingQr} from './pairing-qr.js?v=070';
+import {fullTime} from './ui-data.js?v=070';
 export function pushOutcome(status){return ({queued:{label:'等待发送',tone:'warn'},sending:{label:'发送处理中',tone:'warn'},retry:{label:'等待重试',tone:'warn'},accepted:{label:'微信已受理',tone:'ok'},failed:{label:'发送失败',tone:'bad'},uncertain:{label:'发送结果未确认',tone:'warn'},expired:{label:'验证码已过期',tone:'off'},cancelled:{label:'已取消发送',tone:'off'}})[status]||{label:'状态待确认',tone:'off'};}
 const errorHints={'40164':'服务器公网 IP 不在公众号 API 白名单','40125':'AppSecret 不正确，请重新核对','40013':'AppID 不正确，请重新核对','43004':'接收人尚未关注此服务号','47003':'模板字段或内容格式不符合要求','40037':'模板 ID 不可用，请检查是否属于此公众号','40001':'微信令牌无效，请检查公众号凭据','40014':'微信令牌失效','42001':'微信令牌过期','45009':'微信接口调用达到限额','45047':'此接收人的模板消息额度受限'};
 export function createWechatViews(ui){

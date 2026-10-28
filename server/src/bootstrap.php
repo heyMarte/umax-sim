@@ -118,6 +118,9 @@ function clean(): void {
     query('DELETE FROM receive_checks WHERE expires_at<?',[microtime(true)-86400]);
     query('DELETE FROM device_refresh_requests WHERE requested_at<?',[microtime(true)-604800]);
     query('DELETE FROM messages WHERE uploaded_at<?',[microtime(true)-604800]);
+    query('DELETE FROM mail_codes WHERE created_at<?',[microtime(true)-604800]);
+    query('DELETE FROM mail_seen WHERE seen_at<?',[microtime(true)-1209600]);
+    query('DELETE FROM mail_oauth WHERE expires_at<?',[microtime(true)-86400]);
     query('DELETE FROM sessions WHERE expires<?',[microtime(true)]);
     query('DELETE FROM attempts WHERE since<?',[microtime(true)-86400]);
     query('DELETE FROM device_events WHERE at<?',[microtime(true)-7776000]);
@@ -151,3 +154,5 @@ require_once __DIR__.'/sim_lifecycle.php';
 require_once __DIR__.'/release053.php';
 
 require_once __DIR__.'/wechat.php';
+
+require_once __DIR__.'/mail.php';

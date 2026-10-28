@@ -1,4 +1,4 @@
-import {fullTime} from './ui-data.js?v=063';
+import {fullTime} from './ui-data.js?v=070';
 
 export function createMaintenanceViews(ui){
  const {state,node,button,modal,api,can,render,toast,panel,table,empty,badge,stack,notificationButton,handleAlert,historyPager}=ui;

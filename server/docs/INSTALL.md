@@ -1,6 +1,6 @@
 # 安装说明
 
-本文对应0.6.0，源码布局为server/与android/。先下载发布包，或从维护者仓库取得指定版本；GitHub主仓库计划地址为https://github.com/heyMarte/umax-sim，发布状态以仓库页面为准。
+本文对应0.7.0，源码布局为server/与android/。先下载发布包，或从维护者仓库取得指定版本；GitHub主仓库计划地址为https://github.com/heyMarte/umax-sim，发布状态以仓库页面为准。
 
 以下使用`sim.example.com`与`/www/wwwroot/umax-sim/server`作为示例，替换为自己的域名及实际部署目录。
 
@@ -8,7 +8,7 @@
 
 使用Linux服务器，安装Nginx、PHP8.2及MySQL8.0/MariaDB10.6+。已有生产数据库不要为本项目重新安装或覆盖。
 
-PHP网站与CLI均需检查PDO、pdo_mysql、mbstring、openssl。App发布、专用更新包需zip扩展；微信推送需curl；项目备份使用Phar/tar支持。基础后台不需要打开exec或shell_exec。
+PHP网站与CLI均需检查PDO、pdo_mysql、mbstring、openssl。App发布、专用更新包需zip扩展；微信推送与Outlook邮箱收取需curl；项目备份使用Phar/tar支持。基础后台不需要打开exec或shell_exec。
 
 后台在线升级还需要可执行的PHP CLI，以及proc_open、proc_close、proc_get_status和proc_terminate。若不启用在线升级，可采用命令行手动维护，不必为基础收码开启这些进程函数。
 

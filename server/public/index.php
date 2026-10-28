@@ -8,7 +8,7 @@ header('X-Frame-Options: DENY');
 header('Cache-Control: no-store');
 header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'");
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/';
-try{if(wxPublicRoute($_SERVER['REQUEST_METHOD'],$path))exit;}catch(ApiError $e){http_response_code($e->status);header('Content-Type: text/html; charset=utf-8');echo '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>微信绑定</title><body><h1>暂时无法完成绑定</h1><p>'.htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8').'</p><p>请返回管理后台，重新生成绑定二维码。</p></body></html>';exit;}
+try{if(mailPublicRoute($_SERVER['REQUEST_METHOD'],$path))exit;if(wxPublicRoute($_SERVER['REQUEST_METHOD'],$path))exit;}catch(ApiError $e){http_response_code($e->status);header('Content-Type: text/html; charset=utf-8');echo '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>微信绑定</title><body><h1>暂时无法完成绑定</h1><p>'.htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8').'</p><p>请返回管理后台，重新生成绑定二维码。</p></body></html>';exit;}
 if($path==='/') { header('Content-Type: text/html; charset=utf-8');readfile(__DIR__.'/static/index.html');exit; }
 header('Content-Type: application/json; charset=utf-8');
 try {

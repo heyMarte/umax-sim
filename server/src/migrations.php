@@ -74,6 +74,7 @@ function migrate(): void {
     if(!query("SELECT version FROM schema_versions WHERE version='owner-snapshots-053'")){query('UPDATE messages m JOIN sims s ON s.id=m.sim_id SET m.owner_id=s.created_by WHERE m.shop_id IS NULL AND NOT EXISTS(SELECT 1 FROM sim_shops ms WHERE ms.sim_id=s.id)');query('UPDATE records r JOIN sims s ON s.id=r.sim_id SET r.owner_id=s.created_by,r.currency_snapshot=s.currency');query("INSERT INTO schema_versions(version,applied_at) VALUES('owner-snapshots-053',?)",[microtime(true)]);}
     keyringInit();
     wxMigrate();
+    mailMigrate();
     query('INSERT INTO schema_versions(version,applied_at) VALUES(?,?) ON DUPLICATE KEY UPDATE version=VALUES(version)',['0.3.3',microtime(true)]);
     query('INSERT INTO schema_versions(version,applied_at) VALUES(?,?) ON DUPLICATE KEY UPDATE version=VALUES(version)',['0.3.2',microtime(true)]);
     query('INSERT INTO schema_versions(version,applied_at) VALUES(?,?) ON DUPLICATE KEY UPDATE version=VALUES(version)',['0.3.0',microtime(true)]);

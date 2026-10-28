@@ -195,6 +195,7 @@ function route(string $method,string $path,array $b): mixed {
  if($method==='POST'&&$path==='/api/logout'){$r=legacyRoute($method,$path,$b);audit($u,'logout',$u['id']);return $r;}
  try{
   if(str_starts_with($path,'/api/admin/updates/')){require_once __DIR__.'/online_updates.php';onlineAdmin($u);if($method==='GET'&&$path==='/api/admin/updates/status')return onlineStatus();if($method==='POST'&&$path==='/api/admin/updates/publish-staged-app'){require_once __DIR__.'/app_release.php';return appPublishStaged($u,stringField($b,'id',32));}if($method==='POST'&&$path==='/api/admin/updates/cancel')return onlineCancel($u,stringField($b,'id',32));if($method==='POST'&&$path==='/api/admin/updates/apply')return onlineApply($u,stringField($b,'id',32));if($method==='POST'&&$path==='/api/admin/updates/publish-app')return onlinePublish($u,stringField($b,'id',32));fail(404,'更新接口不存在');}
+  $mail=mailRoute($u,$method,$path,$b);if($mail!==null)return $mail;
   $wechat=wxRoute($u,$method,$path,$b);if($wechat!==null)return $wechat;
   $acl=aclRoute($method,$path,$b,$u);if($acl!==null)return $acl;
   routePermission($u,$method,$path,$b);

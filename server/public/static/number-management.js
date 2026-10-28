@@ -1,4 +1,4 @@
-import {shopChoiceLabel,platformOptions,shopsForSim,shopMatchesPlatform,normalizePlatforms,normalizePhone,localPhone,numberMatches,subscriptions,fullTime,relativeTime} from './ui-data.js?v=063';
+import {shopChoiceLabel,platformOptions,shopsForSim,shopMatchesPlatform,normalizePlatforms,normalizePhone,localPhone,numberMatches,subscriptions,fullTime,relativeTime} from './ui-data.js?v=070';
 
 // This workspace receives only the API's already filtered, authorized data.
 export function createNumberManagement(ui){

@@ -12,6 +12,7 @@ function permissionCatalog(): array {
  'users'=>['账户及授权',['users.view'=>'查看账户','users.create'=>'新增账户','users.edit'=>'编辑及禁用账户','users.delete'=>'删除账户','users.permissions'=>'分配自己范围内的权限与店铺']],
  'audit'=>['操作记录',['audit.view'=>'查看本人操作记录（店铺受限）','audit.all'=>'查看授权店铺内全员记录']],
  'trash'=>['回收站',['trash.view'=>'查看授权范围回收站','trash.restore'=>'恢复数据（仍需对应管理权限）','trash.purge'=>'永久删除回收站数据']],
+ 'mail'=>['Outlook 邮箱',['mail.view'=>'查看授权邮箱','mail.create'=>'添加和批量导入邮箱','mail.edit'=>'编辑授权邮箱','mail.delete'=>'删除授权邮箱及本站验证码','mail.connect'=>'连接及断开 Outlook 授权','mail.sync'=>'请求立即收取邮件','mail.codes.view'=>'查看授权邮箱验证码','mail.codes.copy'=>'复制邮件验证码','mail.codes.delete'=>'删除邮件验证码','mail.permissions'=>'分配本人范围内的邮箱','mail.settings'=>'配置全站微软应用']],
  'wechat'=>['微信推送',['wechat.manage'=>'配置公众号资料和微信推送通道','wechat.secrets.manage'=>'设置和更换公众号密钥（原密钥不回显）','wechat.receive'=>'接收本人授权范围验证码']],
  'backup'=>['备份',['backup.view'=>'查看全站备份状态与恢复说明']]];
  $out=[];foreach($groups as $key=>[$label,$permissions]){$items=[];foreach($permissions as $p=>$l)$items[]=['key'=>$p,'label'=>$l];$out[]=['key'=>$key,'label'=>$label,'permissions'=>$items];}return ['groups'=>$out];

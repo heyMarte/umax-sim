@@ -62,7 +62,7 @@ function saveSimLinks(array $u,int $id,array $shops): void {
 function detachShopLinks(array $u,int $shop): void {
  $ids=array_map('intval',array_column(query('SELECT sim_id AS id FROM sim_shops WHERE shop_id=? UNION SELECT id FROM sims WHERE shop_id=?',[$shop,$shop]),'id'));sort($ids);
  foreach($ids as $sim){query('SELECT id FROM sims WHERE id=? FOR UPDATE',[$sim]);$remaining=array_values(array_filter(simShops($sim),fn($s)=>(int)$s['id']!==$shop));saveSimLinks($u,$sim,$remaining);}
- query('DELETE FROM device_scopes WHERE shop_id=?',[$shop]);
+ query('DELETE FROM device_scopes WHERE shop_id=?',[$shop]);query('UPDATE mail_accounts SET shop_id=NULL WHERE shop_id=?',[$shop]);
 }
 function simLinkRoute(array $u,string $method,string $path,array $b): ?array {
  $onboard=$path==='/api/sims/onboard'&&$method==='POST';$edit=$method==='PUT'&&preg_match('#^/api/sims/(\d+)/shops$#D',$path,$m);if(!$onboard&&!$edit)return null;

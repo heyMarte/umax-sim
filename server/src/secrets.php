@@ -5,6 +5,7 @@ function keyringInit(): void {
     $path=keyringPath();
     if(is_file($path)){masterKey();return;}
     if(query('SELECT id FROM devices WHERE secret_cipher IS NOT NULL LIMIT 1') || (query("SHOW TABLES LIKE 'wx_config'") && query('SELECT id FROM wx_config WHERE secret_cipher IS NOT NULL OR token_cipher IS NOT NULL LIMIT 1')))fail(503,'数据库已有加密密钥但keyring.php缺失，请恢复原文件，不要重新生成');
+    foreach(['mail_config'=>'client_secret_cipher','mail_accounts'=>'refresh_cipher'] as $table=>$column)if(query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',[$table])&&query("SELECT id FROM `$table` WHERE `$column` IS NOT NULL LIMIT 1"))fail(503,'数据库已有邮箱授权密钥但keyring.php缺失，请恢复原文件');
     $content="<?php\nreturn ['master_key' => '".base64_encode(random_bytes(32))."'];\n";
     $oldMask=umask(0077);$h=@fopen($path,'x');umask($oldMask);if(!$h)fail(503,'无法创建密钥文件，请检查config目录权限');
     try{if(fwrite($h,$content)!==strlen($content))fail(503,'密钥文件未完整写入，请检查磁盘空间');}finally{fclose($h);}

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0 — 2026-10-28
+
+Add personal Outlook/Hotmail mailbox OTP collection through server-side delegated OAuth with PKCE, encrypted credential rotation, per-mailbox grants, bulk address import and a persistent collection worker. Add one mailbox workspace for account connections and scoped codes. Inbox/Junk paging, durable checkpoints, deduplication, mixed-code extraction, throttling and reconnect states are covered by regressions. Backend only; Android unchanged. Actual mail collection requires the deployer's Microsoft application registration and mailbox authorization.
+
 ## 0.6.3 — 2026-10-28
 
 Backend only; Android unchanged. Independent AppSecret write permission with server enforcement and no saved-secret readback. Add official-account name and raster follow-QR upload; receiving users and OAuth confirmation pages show which account to follow before personal binding. Identity edits preserve working push configuration. Includes permission, image validation, status redaction and binding regression tests. See docs/UPDATE-0.6.3.md.
